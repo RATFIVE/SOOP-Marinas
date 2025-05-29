@@ -10,7 +10,7 @@ body {
     padding: 0;
     background: var(--soop-blue);
     color: #fff;
-    padding-top: 90px;
+    padding-top: 0;
 }
 
 #branding-header {
@@ -50,6 +50,7 @@ body {
     z-index: 1;
     margin-bottom: 0;
     box-sizing: border-box;
+    top: 0;
 }
 
 .modal {
