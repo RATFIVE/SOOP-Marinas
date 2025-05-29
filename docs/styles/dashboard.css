@@ -49,6 +49,7 @@ body {
     position: relative;
     z-index: 1;
     margin-bottom: 0;
+    box-sizing: border-box;
 }
 
 .modal {

@@ -68,66 +68,79 @@ function hideBatteryOverview() {
 }
 
 async function fetchLocations() {
-    const resp = await fetch(`${FROST_API}/Things?$expand=Locations`);
-    const data = await resp.json();
-    // Things mit Location
-    let thingsWithLoc = data.value.filter(thing => thing.Locations && thing.Locations[0] && thing.Locations[0].location && thing.Locations[0].location.coordinates);
-    // Filter VOR der Umbenennung anwenden
-    const erlaubteThings = [
-        'box_gmr_twl-box_0924005',
-        'box_gmr_twl-box_0924004',
-        'box_gmr_twl-box_0924002',
-        'Badesteg Reventlou'
-    ];
-    thingsWithLoc = thingsWithLoc.filter(thing => erlaubteThings.includes(thing.name));
-    let locations = thingsWithLoc.map(thing => {
-        const loc = thing.Locations[0];
-        let name = thing.name;
-        if (name === 'box_gmr_twl-box_0924005') name = 'Im Jaich, Stadthafen Flensburg';
-        if (name === 'box_gmr_twl-box_0924002') name = 'Marina Kappel';
-        return {
-            id: thing['@iot.id'],
-            name: name,
-            lat: loc.location.coordinates[1],
-            lon: loc.location.coordinates[0]
-        };
-    });
-    // Things ohne Location
-    let thingsWithoutLoc = data.value.filter(thing => !thing.Locations || !thing.Locations[0] || !thing.Locations[0].location || !thing.Locations[0].location.coordinates);
-    for (const thing of thingsWithoutLoc) {
-        // Hole Datastreams
-        const dsResp = await fetch(`${FROST_API}/Things(${thing['@iot.id']})/Datastreams`);
-        const dsData = await dsResp.json();
-        // Suche latitude/longitude Datastreams
-        const latStream = dsData.value.find(ds => ds.name && ds.name.toLowerCase().startsWith('latitude'));
-        const lonStream = dsData.value.find(ds => ds.name && ds.name.toLowerCase().startsWith('longitude'));
-        // Box-Name ggf. ersetzen
-        let thingName = thing.name;
-        if (thingName === 'box_gmr_twl-box_0924005') thingName = 'Im Jaich, Stadthafen Flensburg';
-        if (thingName === 'box_gmr_twl-box_0924002') thingName = 'Marina Kappel';
-        if (latStream && lonStream) {
-            // Hole letzte Observation für beide
-            const latObsResp = await fetch(`${FROST_API}/Datastreams(${latStream['@iot.id']})/Observations?$top=1&$orderby=phenomenonTime desc`);
-            const latObsData = await latObsResp.json();
-            const lonObsResp = await fetch(`${FROST_API}/Datastreams(${lonStream['@iot.id']})/Observations?$top=1&$orderby=phenomenonTime desc`);
-            const lonObsData = await lonObsResp.json();
-            if (latObsData.value.length > 0 && lonObsData.value.length > 0) {
-                locations.push({
-                    id: thing['@iot.id'],
-                    name: thingName,
-                    lat: latObsData.value[0].result,
-                    lon: lonObsData.value[0].result
-                });
-            }
+    try {
+        const resp = await fetch(`${FROST_API}/Things?$expand=Locations`);
+        if (!resp.ok) {
+            console.error('Fehler beim Abrufen der Things:', resp.status, resp.statusText);
+            return [];
         }
+        const data = await resp.json();
+        if (!data.value) {
+            console.error('API-Antwort enthält kein value-Array:', data);
+            return [];
+        }
+        // Debug: Logge alle Thing-Namen und IDs
+        data.value.forEach(t => console.log('Thing:', t.name, 'ID:', t['@iot.id']));
+        // Filter: Nur bestimmte Things zulassen
+        const erlaubteThings = [
+            'box_gmr_twl-box_0924005',
+            'box_gmr_twl-box_0924004',
+            'box_gmr_twl-box_0924002',
+            'Badesteg Reventlou'
+        ];
+        let filteredThings = data.value.filter(thing => erlaubteThings.includes(thing.name));
+        // Für alle relevanten Things: Location holen (entweder aus Locations oder aus Datastreams latitude/longitude)
+        const locations = await Promise.all(filteredThings.map(async thing => {
+            let lat = null, lon = null;
+            let loc = thing.Locations && thing.Locations[0] && thing.Locations[0].location && thing.Locations[0].location.coordinates ? thing.Locations[0] : null;
+            if (loc) {
+                lon = loc.location.coordinates[0];
+                lat = loc.location.coordinates[1];
+            } else {
+                // Hole alle Datastreams und suche nach latitude/longitude
+                try {
+                    const dsResp = await fetch(`${FROST_API}/Things(${thing['@iot.id']})/Datastreams`);
+                    if (dsResp.ok) {
+                        const dsData = await dsResp.json();
+                        const latDs = dsData.value.find(ds => ds.name && ds.name.toLowerCase().startsWith('latitude'));
+                        const lonDs = dsData.value.find(ds => ds.name && ds.name.toLowerCase().startsWith('longitude'));
+                        // Hole letzte Observation für beide
+                        if (latDs && lonDs) {
+                            const [latObsResp, lonObsResp] = await Promise.all([
+                                fetch(`${FROST_API}/Datastreams(${latDs['@iot.id']})/Observations?$top=1&$orderby=phenomenonTime desc`),
+                                fetch(`${FROST_API}/Datastreams(${lonDs['@iot.id']})/Observations?$top=1&$orderby=phenomenonTime desc`)
+                            ]);
+                            if (latObsResp.ok && lonObsResp.ok) {
+                                const latObsData = await latObsResp.json();
+                                const lonObsData = await lonObsResp.json();
+                                if (latObsData.value.length > 0 && lonObsData.value.length > 0) {
+                                    lat = latObsData.value[0].result;
+                                    lon = lonObsData.value[0].result;
+                                }
+                            }
+                        }
+                    }
+                } catch (err) {
+                    console.warn('Fehler beim Nachladen von Lat/Lon aus Datastreams für', thing.name, err);
+                }
+            }
+            let anzeigeName = thing.name;
+            if (thing.name === 'box_gmr_twl-box_0924005') anzeigeName = 'Im Jaich, Stadthafen Flensburg';
+            if (thing.name === 'box_gmr_twl-box_0924002') anzeigeName = 'Marina Kappel';
+            return {
+                id: thing['@iot.id'],
+                name: thing.name,
+                anzeigeName: anzeigeName,
+                lat,
+                lon
+            };
+        }));
+        // Filtere raus, wenn keine Koordinaten gefunden wurden
+        return locations.filter(l => l.lat !== null && l.lon !== null);
+    } catch (err) {
+        console.error('Fehler beim Laden der Things:', err);
+        return [];
     }
-    let locationsWithRenamed = locations.map(loc => {
-        let name = loc.name;
-        if (name === 'box_gmr_twl-box_0924005') name = 'Im Jaich, Stadthafen Flensburg';
-        if (name === 'box_gmr_twl-box_0924002') name = 'Marina Kappel';
-        return {...loc, name};
-    });
-    return locationsWithRenamed;
 }
 
 async function fetchDatastreams(thingId) {
@@ -185,8 +198,27 @@ async function fetchObservations(datastreamId, timeRange) {
     return data.value;
 }
 
+function ensureTimeseriesCanvas() {
+    let canvas = document.getElementById('timeseriesChart');
+    if (!canvas) {
+        const chartContainer = document.getElementById('chartContainer');
+        if (chartContainer) {
+            chartContainer.innerHTML = '';
+            canvas = document.createElement('canvas');
+            canvas.id = 'timeseriesChart';
+            chartContainer.appendChild(canvas);
+        }
+    }
+    return canvas;
+}
+
 function renderChart(observations, title = 'Messwert') {
-    const ctx = document.getElementById('timeseriesChart').getContext('2d');
+    const canvas = ensureTimeseriesCanvas();
+    if (!canvas) {
+        console.error('Canvas für Chart nicht gefunden!');
+        return;
+    }
+    const ctx = canvas.getContext('2d');
     if (window.tsChart) window.tsChart.destroy();
     window.tsChart = new Chart(ctx, {
         type: 'line',
@@ -219,7 +251,12 @@ function renderChart(observations, title = 'Messwert') {
 
 // Neue Funktion für Multi-Liniendiagramm
 function renderChartMulti(datasets, title = 'Messwerte') {
-    const ctx = document.getElementById('timeseriesChart').getContext('2d');
+    const canvas = ensureTimeseriesCanvas();
+    if (!canvas) {
+        console.error('Canvas für Chart nicht gefunden!');
+        return;
+    }
+    const ctx = canvas.getContext('2d');
     if (window.tsChart) window.tsChart.destroy();
     // Farben für die Linien
     const colorPalette = [
@@ -311,8 +348,132 @@ if (loginForm) {
 window.addEventListener('DOMContentLoaded', () => {
     if (dataTitle) dataTitle.textContent = '';
     if (chartContainer) chartContainer.innerHTML = '';
+    // Starte main explizit nach DOM-Load
+    main();
 });
 
+// Marinas für Auswahlbox
+const marinaOptions = [
+    { id: null, name: 'Bitte wählen ...' },
+    { id: null, name: '---' },
+    { id: null, name: 'Im Jaich, Stadthafen Flensburg' },
+    { id: null, name: 'Marina Kappel' },
+    { id: null, name: 'Badesteg Reventlou' },
+    { id: null, name: 'box_gmr_twl-box_0924004' }
+];
+
+// Marina-Auswahlbox wird nicht mehr dynamisch erzeugt, sondern aus dem HTML gelesen.
+const marinaSelect = document.getElementById('marinaSelect');
+let locationsCache = [];
+
+async function main() {
+    const locations = await fetchLocations();
+    locationsCache = locations;
+    // Auswahlbox befüllen
+    marinaSelect.innerHTML = '';
+    locations.forEach(loc => {
+        const opt = document.createElement('option');
+        opt.value = loc.id;
+        opt.textContent = loc.anzeigeName;
+        marinaSelect.appendChild(opt);
+    });
+    // Standard: Badesteg Reventlou auswählen
+    const defaultLoc = locations.find(l => l.name === 'Badesteg Reventlou');
+    if (defaultLoc) marinaSelect.value = defaultLoc.id;
+    // Marker mit Hover-Tooltip (Thing-Name)
+    locations.forEach(loc => {
+        const marker = L.marker([loc.lat, loc.lon], {icon: soopRedIcon}).addTo(map);
+        marker.bindTooltip(loc.anzeigeName, {permanent: false, direction: 'top'});
+        marker.on('click', () => {
+            marinaSelect.value = loc.id;
+            showMarinaData(loc.id);
+        });
+    });
+    // Beim Wechsel der Auswahlbox Marina anzeigen
+    marinaSelect.onchange = () => {
+        showMarinaData(marinaSelect.value);
+    };
+    // Initial Badesteg Reventlou anzeigen
+    if (defaultLoc) showMarinaData(defaultLoc.id);
+    // Admin: Zeige battery_voltage Übersicht
+    if (isAdmin) {
+        const batteryData = await fetchAllBatteryVoltages(locations);
+        showBatteryOverview(batteryData);
+    } else {
+        hideBatteryOverview();
+    }
+}
+
+async function showMarinaData(marinaId) {
+    const loc = locationsCache.find(l => l.id == marinaId);
+    if (!loc) return;
+    // Lade alle Datastreams für das Thing
+    const datastreams = await fetchDatastreamsAll(loc.id);
+    let filteredDatastreams = datastreams.filter(ds => {
+        const n = ds.name.toLowerCase();
+        return !n.startsWith('latitude') && !n.startsWith('longitude');
+    });
+    if (!isAdmin) {
+        filteredDatastreams = filteredDatastreams.filter(ds => !ds.name.toLowerCase().startsWith('battery_voltage'));
+    }
+    if (!filteredDatastreams.length) {
+        dataTitle.textContent = loc.name + ' (Keine Messdaten)';
+        datastreamSelect.innerHTML = '';
+        renderChart([], `${loc.name} (Keine Messdaten)`);
+        dataSection.scrollIntoView({behavior: 'smooth'});
+        return;
+    }
+    datastreamSelect.innerHTML = '';
+    datastreamSelect.multiple = true;
+    datastreamSelect.size = Math.min(filteredDatastreams.length, 8);
+    const datastreamLabel = document.querySelector('label[for="datastreamSelect"]');
+    if (datastreamLabel) datastreamLabel.style.display = 'none';
+    filteredDatastreams.forEach(ds => {
+        const opt = document.createElement('option');
+        opt.value = ds['@iot.id'];
+        opt.textContent = ds.name;
+        datastreamSelect.appendChild(opt);
+    });
+    datastreamSelect.style.display = 'none';
+    dataTitle.textContent = loc.anzeigeName;
+    for (let i = 0; i < datastreamSelect.options.length; i++) {
+        datastreamSelect.options[i].selected = true;
+    }
+    async function updateMultiChart() {
+        const selectedIds = Array.from(datastreamSelect.selectedOptions).map(o => o.value);
+        const datasets = [];
+        for (const dsId of selectedIds) {
+            const ds = filteredDatastreams.find(d => d['@iot.id'] == dsId);
+            const obs = await fetchObservations(dsId, timeRangeSelect.value);
+            // Fehlerbehandlung und Logging für Debug
+            if (!obs || obs.length === 0) {
+                console.warn('Keine Observations für Datastream', ds ? ds.name : dsId);
+            }
+            // Nur hinzufügen, wenn Daten vorhanden
+            if (obs && obs.length > 0) {
+                datasets.push({
+                    label: ds.name,
+                    data: obs.map(o => ({x: o.phenomenonTime, y: o.result})),
+                    borderColor: ds.name.toLowerCase().includes('battery') ? '#FF6666' : '#78D278',
+                    backgroundColor: ds.name.toLowerCase().includes('battery') ? 'rgba(255,102,102,0.15)' : 'rgba(120,210,120,0.15)',
+                    fill: false,
+                    pointRadius: 2
+                });
+            }
+        }
+        if (datasets.length === 0) {
+            renderChart([], loc.anzeigeName + ' (Keine Messdaten)');
+        } else {
+            renderChartMulti(datasets, loc.anzeigeName);
+        }
+    }
+    updateMultiChart();
+    datastreamSelect.onchange = updateMultiChart;
+    timeRangeSelect.onchange = updateMultiChart;
+    dataSection.scrollIntoView({behavior: 'smooth'});
+}
+
+// Neue Admin-Logik für die Anzeige der battery_voltage Übersicht
 function showLogoutButton() {
     let logoutBtn = document.getElementById('logoutBtn');
     if (!logoutBtn) {
@@ -341,78 +502,3 @@ function showLogoutButton() {
         };
     }
 }
-
-async function main() {
-    const locations = await fetchLocations();
-    // Marker mit Hover-Tooltip (Thing-Name)
-    locations.forEach(loc => {
-        const marker = L.marker([loc.lat, loc.lon], {icon: soopRedIcon}).addTo(map);
-        marker.bindTooltip(loc.name, {permanent: false, direction: 'top'});
-        marker.on('click', async () => {
-            // Lade alle Datastreams für das Thing
-            const datastreams = await fetchDatastreamsAll(loc.id);
-            let filteredDatastreams = datastreams.filter(ds => {
-                const n = ds.name.toLowerCase();
-                return !n.startsWith('latitude') && !n.startsWith('longitude');
-            });
-            if (!isAdmin) {
-                filteredDatastreams = filteredDatastreams.filter(ds => !ds.name.toLowerCase().startsWith('battery_voltage'));
-            }
-            if (!filteredDatastreams.length) {
-                dataTitle.textContent = loc.name + ' (Keine Messdaten)';
-                datastreamSelect.innerHTML = '';
-                renderChart([], `${loc.name} (Keine Messdaten)`);
-                dataSection.scrollIntoView({behavior: 'smooth'});
-                return;
-            }
-            // Multi-Select für Datastreams
-            datastreamSelect.innerHTML = '';
-            datastreamSelect.multiple = true;
-            datastreamSelect.size = Math.min(filteredDatastreams.length, 8);
-            // Label für Datastream-Select ausblenden
-            const datastreamLabel = document.querySelector('label[for="datastreamSelect"]');
-            if (datastreamLabel) datastreamLabel.style.display = 'none';
-            filteredDatastreams.forEach(ds => {
-                const opt = document.createElement('option');
-                opt.value = ds['@iot.id'];
-                opt.textContent = ds.name;
-                datastreamSelect.appendChild(opt);
-            });
-            datastreamSelect.style.display = 'none'; // Auswahlfeld bleibt unsichtbar
-            dataTitle.textContent = loc.name;
-            for (let i = 0; i < datastreamSelect.options.length; i++) {
-                datastreamSelect.options[i].selected = true;
-            }
-            async function updateMultiChart() {
-                const selectedIds = Array.from(datastreamSelect.selectedOptions).map(o => o.value);
-                const datasets = [];
-                for (const dsId of selectedIds) {
-                    const ds = filteredDatastreams.find(d => d['@iot.id'] == dsId);
-                    const obs = await fetchObservations(dsId, timeRangeSelect.value);
-                    datasets.push({
-                        label: ds.name,
-                        data: obs.map(o => ({x: o.phenomenonTime, y: o.result})),
-                        borderColor: ds.name.toLowerCase().includes('battery') ? '#FF6666' : '#78D278',
-                        backgroundColor: ds.name.toLowerCase().includes('battery') ? 'rgba(255,102,102,0.15)' : 'rgba(120,210,120,0.15)',
-                        fill: false,
-                        pointRadius: 2
-                    });
-                }
-                renderChartMulti(datasets, loc.name);
-            }
-            updateMultiChart();
-            datastreamSelect.onchange = updateMultiChart;
-            timeRangeSelect.onchange = updateMultiChart;
-            dataSection.scrollIntoView({behavior: 'smooth'});
-        });
-    });
-    // Admin: Zeige battery_voltage Übersicht
-    if (isAdmin) {
-        const batteryData = await fetchAllBatteryVoltages(locations);
-        showBatteryOverview(batteryData);
-    } else {
-        hideBatteryOverview();
-    }
-}
-
-main();
