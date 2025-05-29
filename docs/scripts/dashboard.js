@@ -93,6 +93,14 @@ async function fetchLocations() {
     const data = await resp.json();
     // Things mit Location
     let thingsWithLoc = data.value.filter(thing => thing.Locations && thing.Locations[0] && thing.Locations[0].location && thing.Locations[0].location.coordinates);
+    // Filter VOR der Umbenennung anwenden
+    const erlaubteThings = [
+        'box_gmr_twl-box_0924005',
+        'box_gmr_twl-box_0924004',
+        'box_gmr_twl-box_0924002',
+        'Badesteg Reventlou'
+    ];
+    thingsWithLoc = thingsWithLoc.filter(thing => erlaubteThings.includes(thing.name));
     let locations = thingsWithLoc.map(thing => {
         const loc = thing.Locations[0];
         let name = thing.name;
