@@ -18,7 +18,7 @@ body {
     justify-content: center;
     align-items: flex-start;
     position: fixed;
-    top: 48px;
+    top: 120px; /* Abstand zum externen Webseiten-Header erhöhen */
     left: 0;
     width: 100vw;
     z-index: 2003;
@@ -92,7 +92,7 @@ body {
 
 #loginBox {
     position: fixed;
-    top: 60px;
+    top: 140px; /* Abstand zum externen Webseiten-Header erhöhen */
     right: 30px;
     background: var(--soop-blue);
     border: 2px solid var(--soop-green);
