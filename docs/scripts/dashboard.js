@@ -84,11 +84,17 @@ async function fetchLocations() {
         // Filter: Nur bestimmte Things zulassen
         const erlaubteThings = [
             'box_gmr_twl-box_0924005',
-            'box_gmr_twl-box_0924004',
             'box_gmr_twl-box_0924002',
-            'Badesteg Reventlou'
+            'Badesteg Reventlou',
+            'box_gmr_twl-box_0924004'
         ];
+        if (isAdmin) erlaubteThings.push('box_gmr_twl-box_0924004');
         let filteredThings = data.value.filter(thing => erlaubteThings.includes(thing.name));
+        // Nachträglich für Nicht-Admins rausfiltern
+        filteredThings = filteredThings.filter(thing => {
+            if (thing.name === 'box_gmr_twl-box_09240041' && !isAdmin) return false;
+            return true;
+        });
         // Für alle relevanten Things: Location holen (entweder aus Locations oder aus Datastreams latitude/longitude)
         const locations = await Promise.all(filteredThings.map(async thing => {
             let lat = null, lon = null;
@@ -358,8 +364,8 @@ const marinaOptions = [
     { id: null, name: '---' },
     { id: null, name: 'Im Jaich, Stadthafen Flensburg' },
     { id: null, name: 'Marina Kappel' },
-    { id: null, name: 'Badesteg Reventlou' },
-    { id: null, name: 'box_gmr_twl-box_0924004' }
+    { id: null, name: 'Badesteg Reventlou' }
+    // box_gmr_twl-box_0924004 wird nicht mehr statisch gelistet
 ];
 
 // Marina-Auswahlbox wird nicht mehr dynamisch erzeugt, sondern aus dem HTML gelesen.
@@ -392,13 +398,17 @@ async function renderLastValuesTable(loc) {
     const datastreams = await fetchDatastreamsAll(loc.id);
     let filteredDatastreams = datastreams.filter(ds => {
         const n = ds.name.toLowerCase();
-        return !n.startsWith('latitude') && !n.startsWith('longitude');
+        if (n.startsWith('latitude') || n.startsWith('longitude')) return false;
+        // Battery Voltage nur für Admin
+        const dsShortName = ds.name.split('*')[0].trim();
+        if (isBatteryVoltage(dsShortName) && !isAdmin) return false;
+        return true;
     });
     if (!filteredDatastreams.length) return;
     // Hole für jeden Datastream die letzte Observation
     const lastValues = await Promise.all(filteredDatastreams.map(async ds => {
-        // Name am * trennen
         const dsShortName = ds.name.split('*')[0].trim();
+        const displayName = getDisplayName(dsShortName);
         try {
             const obsResp = await fetch(`${FROST_API}/Datastreams(${ds['@iot.id']})/Observations?$top=1&$orderby=phenomenonTime desc`);
             if (obsResp.ok) {
@@ -409,7 +419,7 @@ async function renderLastValuesTable(loc) {
                     const dateStr = dateObj.toLocaleDateString('de-DE');
                     const timeStr = dateObj.toLocaleTimeString('de-DE', {hour: '2-digit', minute: '2-digit'});
                     return {
-                        name: dsShortName,
+                        name: displayName,
                         value: obs.result,
                         date: dateStr,
                         time: timeStr
@@ -418,7 +428,7 @@ async function renderLastValuesTable(loc) {
             }
         } catch (e) {}
         return {
-            name: dsShortName,
+            name: displayName,
             value: 'n/a',
             date: '-',
             time: '-'
@@ -440,6 +450,98 @@ async function renderLastValuesTable(loc) {
     html += `</tbody></table>`;
     lastValuesTableContainer.innerHTML = html;
     lastValuesTableContainer.style.display = 'block';
+}
+
+// Wetterdaten von Open-Meteo API holen
+// Wetterdaten-Cache für die Session
+// const weatherCache = {};
+
+// async function fetchWeatherData(lat, lon) {
+//     const key = `${lat.toFixed(4)},${lon.toFixed(4)}`;
+//     if (weatherCache[key]) {
+//         return weatherCache[key];
+//     }
+//     // Open-Meteo API: https://open-meteo.com/
+//     // Wir holen aktuelle Werte für windspeed_10m, temperature_2m, winddirection_10m, pressure_msl
+//     const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&hourly=temperature_2m,pressure_msl,winddirection_10m,windspeed_10m&timezone=auto`;
+//     try {
+//         const resp = await fetch(url);
+//         if (!resp.ok) return null;
+//         const data = await resp.json();
+//         if (!data.current_weather) return null;
+//         const weather = {
+//             windspeed: data.current_weather.windspeed,
+//             winddirection: data.current_weather.winddirection,
+//             temperature: data.current_weather.temperature,
+//             pressure: data.current_weather.pressure_msl || (data.hourly && data.hourly.pressure_msl ? data.hourly.pressure_msl[0] : null),
+//             time: data.current_weather.time
+//         };
+//         weatherCache[key] = weather;
+//         return weather;
+//     } catch (e) {
+//         return null;
+//     }
+// }
+
+// Wetterdaten in der Tabelle anzeigen (unterhalb der FROST-Messwerte)
+// async function renderWeatherTable(loc) {
+//     if (!loc || !loc.lat || !loc.lon) return;
+//     const weather = await fetchWeatherData(loc.lat, loc.lon);
+//     let html = `<div style='font-size:1.08em;font-weight:700;margin-bottom:10px;color:#053246;'>Aktuelle Wetterdaten</div>`;
+//     if (!weather) {
+//         html += `<div style='color:#888;'>Keine Wetterdaten verfügbar</div>`;
+//     } else {
+//         const dateObj = new Date(weather.time);
+//         const dateStr = dateObj.toLocaleDateString('de-DE');
+//         const timeStr = dateObj.toLocaleTimeString('de-DE', {hour: '2-digit', minute: '2-digit'});
+//         html += `<table style='width:100%;border-collapse:collapse;margin-bottom:8px;'>`;
+//         html += `<thead><tr style='background:#f5f5f5;'><th style='text-align:left;padding:6px 8px;'>Parameter</th><th style='text-align:right;padding:6px 8px;'>Wert</th><th style='text-align:center;padding:6px 8px;'>Datum</th><th style='text-align:center;padding:6px 8px;'>Uhrzeit</th></tr></thead>`;
+//         html += `<tbody>`;
+//         html += `<tr><td style='padding:6px 8px;'>${getDisplayName('temperature')}</td><td style='padding:6px 8px;text-align:right;'>${weather.temperature} °C</td><td style='padding:6px 8px;text-align:center;color:#888;'>${dateStr}</td><td style='padding:6px 8px;text-align:center;color:#888;'>${timeStr}</td></tr>`;
+//         html += `<tr><td style='padding:6px 8px;'>${getDisplayName('windspeed')}</td><td style='padding:6px 8px;text-align:right;'>${weather.windspeed} km/h</td><td style='padding:6px 8px;text-align:center;color:#888;'>${dateStr}</td><td style='padding:6px 8px;text-align:center;color:#888;'>${timeStr}</td></tr>`;
+//         html += `<tr><td style='padding:6px 8px;'>${getDisplayName('winddirection')}</td><td style='padding:6px 8px;text-align:right;'>${weather.winddirection}°</td><td style='padding:6px 8px;text-align:center;color:#888;'>${dateStr}</td><td style='padding:6px 8px;text-align:center;color:#888;'>${timeStr}</td></tr>`;
+//         html += `<tr><td style='padding:6px 8px;'>${getDisplayName('pressure')}</td><td style='padding:6px 8px;text-align:right;'>${weather.pressure ? weather.pressure + ' hPa' : 'n/a'}</td><td style='padding:6px 8px;text-align:center;color:#888;'>${dateStr}</td><td style='padding:6px 8px;text-align:center;color:#888;'>${timeStr}</td></tr>`;
+//         html += `</tbody></table>`;
+//     }
+//     // Wetterdaten unter die FROST-Tabelle einfügen
+//     const lastValuesTableContainer = document.getElementById('lastValuesTableContainer');
+//     if (lastValuesTableContainer) {
+//         let weatherDiv = document.getElementById('weatherTableContainer');
+//         if (!weatherDiv) {
+//             weatherDiv = document.createElement('div');
+//             weatherDiv.id = 'weatherTableContainer';
+//             lastValuesTableContainer.appendChild(weatherDiv);
+//         }
+//         weatherDiv.innerHTML = html;
+//     }
+// }
+
+// Mapping für sprechende Namen
+const DISPLAY_NAME_MAP = {
+    'battery_voltage': 'Battery Voltage',
+    'temperature': 'Temperature',
+    'temperature_water': 'Water Temperature',
+    'wtemp': 'Water Temperature',
+    'tide_measurement': 'Water Level',
+    'water_level': 'Water Level',
+    'standard_deviation': 'Standard Deviation Water Level',
+    'wave_height': 'Wave Height',
+    'windspeed': 'Wind Speed',
+    'winddirection': 'Wind Direction',
+    'pressure': 'Air Pressure',
+    'lufttemperatur': 'Air Temperature',
+    // weitere Zuordnungen nach Bedarf
+};
+function getDisplayName(shortName) {
+    const key = shortName.toLowerCase().replace(/\s/g, '_');
+    if (DISPLAY_NAME_MAP[key]) return DISPLAY_NAME_MAP[key];
+    return shortName.charAt(0).toUpperCase() + shortName.slice(1);
+}
+
+// Hilfsfunktion: Prüft, ob ein Datastream-Name (shortName) ein Battery Voltage ist
+function isBatteryVoltage(shortName) {
+    const key = shortName.toLowerCase().replace(/\s/g, '_');
+    return key === 'battery_voltage';
 }
 
 // Hauptfunktion
@@ -470,11 +572,15 @@ async function main() {
             const datastreams = await fetchDatastreamsAll(loc.id);
             let filteredDatastreams = datastreams.filter(ds => {
                 const n = ds.name.toLowerCase();
-                return !n.startsWith('latitude') && !n.startsWith('longitude');
+                if (n.startsWith('latitude') || n.startsWith('longitude')) return false;
+                // Battery Voltage nur für Admin
+                const dsShortName = ds.name.split('*')[0].trim();
+                if (isBatteryVoltage(dsShortName) && !isAdmin) return false;
+                return true;
             });
             const lastValues = await Promise.all(filteredDatastreams.map(async ds => {
-                // Name am * trennen
                 const dsShortName = ds.name.split('*')[0].trim();
+                const displayName = getDisplayName(dsShortName);
                 try {
                     const obsResp = await fetch(`${FROST_API}/Datastreams(${ds['@iot.id']})/Observations?$top=1&$orderby=phenomenonTime desc`);
                     if (obsResp.ok) {
@@ -485,11 +591,11 @@ async function main() {
                             const dateObj = new Date(obs.phenomenonTime);
                             const dateStr = dateObj.toLocaleDateString('de-DE');
                             const timeStr = dateObj.toLocaleTimeString('de-DE', {hour: '2-digit', minute: '2-digit'});
-                            return `<div style='margin-bottom:6px;'><span style='font-weight:600;'>${dsShortName}:</span> <span style='color:#053246;'>${obs.result}</span><br><span style='font-size:0.92em;color:#888;'>${dateStr} ${timeStr}</span></div>`;
+                            return `<div style='margin-bottom:6px;'><span style='font-weight:600;'>${displayName}:</span> <span style='color:#053246;'>${obs.result}</span><br><span style='font-size:0.92em;color:#888;'>${dateStr} ${timeStr}</span></div>`;
                         }
                     }
                 } catch (e) {}
-                return `<div style='margin-bottom:6px;'><span style='font-weight:600;'>${dsShortName}:</span> <span style='color:#888;'>n/a</span></div>`;
+                return `<div style='margin-bottom:6px;'><span style='font-weight:600;'>${displayName}:</span> <span style='color:#888;'>n/a</span></div>`;
             }));
             const popupHtml = `
                 <div style='min-width:210px;padding:4px 2px 2px 2px;'>
@@ -523,11 +629,17 @@ async function showMarinaData(marinaId) {
     if (!loc) return;
     // Zeige die Tabelle der letzten Messwerte
     renderLastValuesTable(loc);
+    // Zeige Wetterdaten
+    // renderWeatherTable(loc);
     // Lade alle Datastreams für das Thing
     const datastreams = await fetchDatastreamsAll(loc.id);
     let filteredDatastreams = datastreams.filter(ds => {
         const n = ds.name.toLowerCase();
-        return !n.startsWith('latitude') && !n.startsWith('longitude');
+        if (n.startsWith('latitude') || n.startsWith('longitude')) return false;
+        // Battery Voltage nur für Admin
+        const dsShortName = ds.name.split('*')[0].trim();
+        if (isBatteryVoltage(dsShortName) && !isAdmin) return false;
+        return true;
     });
     if (!isAdmin) {
         filteredDatastreams = filteredDatastreams.filter(ds => !ds.name.toLowerCase().startsWith('battery_voltage'));
@@ -615,6 +727,8 @@ function showLogoutButton() {
             datastreamSelectContainer.style.display = 'none';
             renderChart([], '');
             hideBatteryOverview(); // Fenster mit der Spannung aller Geräte schließen
+            // Nach Logout: Auswahlbox und Marker neu laden (ohne Admin-Things)
+            main();
         };
     }
 }

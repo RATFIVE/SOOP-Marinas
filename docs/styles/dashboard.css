@@ -91,7 +91,7 @@ body {
 }
 
 #loginBox {
-    position: absolute;
+    position: fixed;
     top: 20px;
     right: 30px;
     background: var(--soop-blue);
