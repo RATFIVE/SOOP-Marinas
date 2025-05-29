@@ -4,7 +4,15 @@
 // 3. Beim Klick auf Marker Zeitreihe laden und anzeigen
 
 // Schleswig-Holstein: Mittelpunkt ca. [54.4, 9.7], Zoom 8
-const map = L.map('map').setView([54.4, 9.7], 8);
+const map = L.map('map', {
+    zoomControl: false,
+    dragging: true,
+    scrollWheelZoom: false,
+    doubleClickZoom: false,
+    boxZoom: false,
+    keyboard: false,
+    touchZoom: false
+}).setView([54.4, 9.7], 8);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '© OpenStreetMap contributors'
 }).addTo(map);
