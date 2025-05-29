@@ -43,8 +43,12 @@ body {
 
 #map {
     width: 100vw;
-    height: 500px;
-    margin-bottom: 24px;
+    height: 100vh;
+    max-width: 100vw;
+    max-height: 100vh;
+    position: relative;
+    z-index: 1;
+    margin-bottom: 0;
 }
 
 .modal {
@@ -200,6 +204,28 @@ body {
 
 #soop-logo:hover {
     opacity: 1;
+}
+
+#dataSection {
+    width: 100vw;
+    max-width: 100%;
+    background: #fff;
+    color: var(--soop-blue);
+    padding: 32px 0 48px 0;
+    min-height: 420px;
+    z-index: 2;
+    box-shadow: 0 -2px 16px rgba(5,50,70,0.08);
+}
+
+#dataContent {
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+#dataTitle {
+    margin-bottom: 18px;
+    font-size: 1.3em;
+    font-weight: bold;
 }
 
 @media (max-width: 900px) {

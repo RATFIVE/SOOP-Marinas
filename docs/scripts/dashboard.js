@@ -13,37 +13,16 @@ const FROST_API = 'https://timeseries.geomar.de/soop/FROST-Server/v1.1';
 
 let isAdmin = false;
 
-const popupContainer = document.getElementById('popupContainer');
-const closePopup = document.getElementById('closePopup');
-const popupTitle = document.getElementById('popupTitle');
+const dataSection = document.getElementById('dataSection');
+const dataTitle = document.getElementById('dataTitle');
+const datastreamSelect = document.getElementById('datastreamSelect');
+const timeRangeSelect = document.getElementById('timeRangeSelect');
+const chartContainer = document.getElementById('chartContainer');
 
 // Drag & Drop für das Popup
 let isDragging = false;
 let dragOffsetX = 0;
 let dragOffsetY = 0;
-
-if (popupContainer) {
-    popupContainer.addEventListener('mousedown', function(e) {
-        // Nur wenn auf den oberen Bereich (nicht auf Inputs etc.) geklickt wird
-        if (e.target === popupContainer || e.target === popupTitle) {
-            isDragging = true;
-            dragOffsetX = e.clientX - popupContainer.getBoundingClientRect().left;
-            dragOffsetY = e.clientY - popupContainer.getBoundingClientRect().top;
-            popupContainer.style.transition = 'none';
-        }
-    });
-    document.addEventListener('mousemove', function(e) {
-        if (isDragging) {
-            popupContainer.style.left = (e.clientX - dragOffsetX) + 'px';
-            popupContainer.style.top = (e.clientY - dragOffsetY) + 'px';
-            popupContainer.style.right = 'auto';
-        }
-    });
-    document.addEventListener('mouseup', function() {
-        isDragging = false;
-        popupContainer.style.transition = '';
-    });
-}
 
 // Leaflet Marker-Icon in SOOP-Rot
 const soopRedIcon = new L.Icon({
@@ -302,9 +281,6 @@ function renderChartMulti(datasets, title = 'Messwerte') {
 const loginForm = document.getElementById('loginForm');
 const loginStatus = document.getElementById('loginStatus');
 const loginBox = document.getElementById('loginBox');
-const datastreamSelect = document.getElementById('datastreamSelect');
-const datastreamSelectContainer = document.getElementById('datastreamSelectContainer');
-const timeRangeSelect = document.getElementById('timeRangeSelect');
 
 if (loginForm) {
     loginForm.onsubmit = function(e) {
@@ -330,6 +306,12 @@ if (loginForm) {
         }
     };
 }
+
+// Bereich unter der Karte initial leeren
+window.addEventListener('DOMContentLoaded', () => {
+    if (dataTitle) dataTitle.textContent = '';
+    if (chartContainer) chartContainer.innerHTML = '';
+});
 
 function showLogoutButton() {
     let logoutBtn = document.getElementById('logoutBtn');
@@ -360,14 +342,6 @@ function showLogoutButton() {
     }
 }
 
-if (closePopup) {
-    closePopup.onclick = function() {
-        popupContainer.style.display = 'none';
-        datastreamSelect.innerHTML = '';
-        renderChart([], '');
-    };
-}
-
 async function main() {
     const locations = await fetchLocations();
     // Marker mit Hover-Tooltip (Thing-Name)
@@ -377,9 +351,7 @@ async function main() {
         marker.on('click', async () => {
             // Lade alle Datastreams für das Thing
             const datastreams = await fetchDatastreamsAll(loc.id);
-            let filteredDatastreams = datastreams;
-            // Filter: Keine latitude/longitude-Datastreams im Diagramm
-            filteredDatastreams = filteredDatastreams.filter(ds => {
+            let filteredDatastreams = datastreams.filter(ds => {
                 const n = ds.name.toLowerCase();
                 return !n.startsWith('latitude') && !n.startsWith('longitude');
             });
@@ -387,29 +359,30 @@ async function main() {
                 filteredDatastreams = filteredDatastreams.filter(ds => !ds.name.toLowerCase().startsWith('battery_voltage'));
             }
             if (!filteredDatastreams.length) {
-                popupContainer.style.display = 'block';
-                popupTitle.textContent = loc.name + ' (Keine Messdaten)';
+                dataTitle.textContent = loc.name + ' (Keine Messdaten)';
                 datastreamSelect.innerHTML = '';
                 renderChart([], `${loc.name} (Keine Messdaten)`);
+                dataSection.scrollIntoView({behavior: 'smooth'});
                 return;
             }
             // Multi-Select für Datastreams
             datastreamSelect.innerHTML = '';
             datastreamSelect.multiple = true;
             datastreamSelect.size = Math.min(filteredDatastreams.length, 8);
+            // Label für Datastream-Select ausblenden
+            const datastreamLabel = document.querySelector('label[for="datastreamSelect"]');
+            if (datastreamLabel) datastreamLabel.style.display = 'none';
             filteredDatastreams.forEach(ds => {
                 const opt = document.createElement('option');
                 opt.value = ds['@iot.id'];
                 opt.textContent = ds.name;
                 datastreamSelect.appendChild(opt);
             });
-            popupContainer.style.display = 'block';
-            popupTitle.textContent = loc.name;
-            // Initial: alle Datastreams vorauswählen
+            datastreamSelect.style.display = 'none'; // Auswahlfeld bleibt unsichtbar
+            dataTitle.textContent = loc.name;
             for (let i = 0; i < datastreamSelect.options.length; i++) {
                 datastreamSelect.options[i].selected = true;
             }
-            // Funktion zum Laden und Plotten mehrerer Datastreams
             async function updateMultiChart() {
                 const selectedIds = Array.from(datastreamSelect.selectedOptions).map(o => o.value);
                 const datasets = [];
@@ -427,11 +400,10 @@ async function main() {
                 }
                 renderChartMulti(datasets, loc.name);
             }
-            // Initial anzeigen
             updateMultiChart();
-            // Events für Auswahlwechsel
             datastreamSelect.onchange = updateMultiChart;
             timeRangeSelect.onchange = updateMultiChart;
+            dataSection.scrollIntoView({behavior: 'smooth'});
         });
     });
     // Admin: Zeige battery_voltage Übersicht

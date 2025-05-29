@@ -21,26 +21,27 @@
         </form>
         <div id="loginStatus"></div>
     </div>
-    <div id="map" style="position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:1;"></div>
-    <div id="popupContainer" style="display:none;position:fixed;top:60px;right:40px;z-index:2002;background:#fff;padding:20px 24px;border-radius:12px;box-shadow:0 2px 16px rgba(0,0,0,0.18);min-width:320px;">
-        <button id="closePopup" style="position:absolute;top:8px;right:12px;font-size:1.5em;background:none;border:none;cursor:pointer;">&times;</button>
-        <div style="margin-bottom:12px;font-weight:bold;" id="popupTitle"></div>
-        <div style="margin-bottom:12px;display:none;">
-            <label for="datastreamSelect">Datastream auswählen:</label>
-            <select id="datastreamSelect"></select>
+    <div id="map" style="width:100vw;max-width:100%;height:400px;position:relative;z-index:1;"></div>
+    <section id="dataSection" style="width:100vw;max-width:100%;background:#fff;color:var(--soop-blue);padding:32px 0 48px 0;min-height:420px;z-index:2;">
+        <div id="dataContent" style="max-width:900px;margin:0 auto;">
+            <h2 id="dataTitle" style="margin-bottom:18px;"></h2>
+            <div style="margin-bottom:12px;">
+                <label for="datastreamSelect">Datastream auswählen:</label>
+                <select id="datastreamSelect"></select>
+            </div>
+            <div style="margin-bottom:12px;">
+                <label for="timeRangeSelect">Zeitraum:</label>
+                <select id="timeRangeSelect">
+                    <option value="24h">Letzte 24h</option>
+                    <option value="7d">Letzte 7 Tage</option>
+                    <option value="1y">Letztes Jahr</option>
+                </select>
+            </div>
+            <div id="chartContainer">
+                <canvas id="timeseriesChart"></canvas>
+            </div>
         </div>
-        <div style="margin-bottom:12px;">
-            <label for="timeRangeSelect">Zeitraum:</label>
-            <select id="timeRangeSelect">
-                <option value="24h">Letzte 24h</option>
-                <option value="7d">Letzte 7 Tage</option>
-                <option value="1y">Letztes Jahr</option>
-            </select>
-        </div>
-        <div id="chartContainer">
-            <canvas id="timeseriesChart"></canvas>
-        </div>
-    </div>
+    </section>
     <script src="scripts/dashboard.js"></script>
     <img id="soop-logo" src="images/SOOP-Logo_Standard.svg" alt="SOOP Logo">
 </body>
