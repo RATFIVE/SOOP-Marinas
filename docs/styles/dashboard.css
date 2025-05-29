@@ -18,7 +18,7 @@ body {
     justify-content: center;
     align-items: flex-start;
     position: fixed;
-    top: 120px; /* Abstand zum externen Webseiten-Header erhöhen */
+    top: 0;
     left: 0;
     width: 100vw;
     z-index: 2003;
@@ -93,7 +93,7 @@ body {
 
 #loginBox {
     position: fixed;
-    top: 140px; /* Abstand zum externen Webseiten-Header erhöhen */
+    top: 0;
     right: 30px;
     background: var(--soop-blue);
     border: 2px solid var(--soop-green);
@@ -232,14 +232,14 @@ body {
 
 @media (max-width: 900px) {
     #branding-header {
-        top: 8px;
+        top: 0;
     }
     #branding-header h1 {
         font-size: 1.1rem;
         padding: 5px 14px 4px 14px;
     }
     #loginBox {
-        top: 8px;
+        top: 0;
         right: 10px;
         padding: 10px 8px;
         font-size: 0.95em;
@@ -259,7 +259,7 @@ body {
 
 @media (max-width: 600px) {
     #branding-header {
-        top: 4px;
+        top: 0;
     }
     #branding-header h1 {
         font-size: 0.9rem;
@@ -267,7 +267,7 @@ body {
         border-radius: 7px;
     }
     #loginBox {
-        top: 4px;
+        top: 0;
         right: 4px;
         padding: 7px 4px;
         font-size: 0.92em;
