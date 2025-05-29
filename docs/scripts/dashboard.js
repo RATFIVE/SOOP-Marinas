@@ -366,6 +366,83 @@ const marinaOptions = [
 const marinaSelect = document.getElementById('marinaSelect');
 let locationsCache = [];
 
+// Bereich für die letzten Messwerte unterhalb der Karte, aber oberhalb des Diagramms
+const lastValuesTableContainer = document.createElement('div');
+lastValuesTableContainer.id = 'lastValuesTableContainer';
+lastValuesTableContainer.style.maxWidth = '900px';
+lastValuesTableContainer.style.margin = '24px auto 0 auto';
+lastValuesTableContainer.style.background = '#fff';
+lastValuesTableContainer.style.borderRadius = '8px';
+lastValuesTableContainer.style.boxShadow = '0 2px 8px rgba(5,50,70,0.08)';
+lastValuesTableContainer.style.padding = '18px 18px 12px 18px';
+lastValuesTableContainer.style.display = 'none';
+
+// Füge den Container in den dataContent-Bereich ein (vor dem Chart)
+const dataContent = document.getElementById('dataContent');
+if (dataContent) {
+    const chartContainer = document.getElementById('chartContainer');
+    dataContent.insertBefore(lastValuesTableContainer, chartContainer);
+}
+
+// Hilfsfunktion: Tabelle der letzten Messwerte rendern
+async function renderLastValuesTable(loc) {
+    lastValuesTableContainer.innerHTML = '';
+    lastValuesTableContainer.style.display = 'none';
+    if (!loc) return;
+    const datastreams = await fetchDatastreamsAll(loc.id);
+    let filteredDatastreams = datastreams.filter(ds => {
+        const n = ds.name.toLowerCase();
+        return !n.startsWith('latitude') && !n.startsWith('longitude');
+    });
+    if (!filteredDatastreams.length) return;
+    // Hole für jeden Datastream die letzte Observation
+    const lastValues = await Promise.all(filteredDatastreams.map(async ds => {
+        // Name am * trennen
+        const dsShortName = ds.name.split('*')[0].trim();
+        try {
+            const obsResp = await fetch(`${FROST_API}/Datastreams(${ds['@iot.id']})/Observations?$top=1&$orderby=phenomenonTime desc`);
+            if (obsResp.ok) {
+                const obsData = await obsResp.json();
+                if (obsData.value.length > 0) {
+                    const obs = obsData.value[0];
+                    const dateObj = new Date(obs.phenomenonTime);
+                    const dateStr = dateObj.toLocaleDateString('de-DE');
+                    const timeStr = dateObj.toLocaleTimeString('de-DE', {hour: '2-digit', minute: '2-digit'});
+                    return {
+                        name: dsShortName,
+                        value: obs.result,
+                        date: dateStr,
+                        time: timeStr
+                    };
+                }
+            }
+        } catch (e) {}
+        return {
+            name: dsShortName,
+            value: 'n/a',
+            date: '-',
+            time: '-'
+        };
+    }));
+    // Baue die Tabelle
+    let html = `<div style='font-size:1.08em;font-weight:700;margin-bottom:10px;color:#053246;'>Letzte Messwerte</div>`;
+    html += `<table style='width:100%;border-collapse:collapse;'>`;
+    html += `<thead><tr style='background:#f5f5f5;'><th style='text-align:left;padding:6px 8px;'>Messgröße</th><th style='text-align:right;padding:6px 8px;'>Wert</th><th style='text-align:center;padding:6px 8px;'>Datum</th><th style='text-align:center;padding:6px 8px;'>Uhrzeit</th></tr></thead>`;
+    html += `<tbody>`;
+    lastValues.forEach(row => {
+        html += `<tr style='border-bottom:1px solid #e0e0e0;'>`;
+        html += `<td style='padding:6px 8px;'>${row.name}</td>`;
+        html += `<td style='padding:6px 8px;text-align:right;color:#053246;font-weight:600;'>${row.value}</td>`;
+        html += `<td style='padding:6px 8px;text-align:center;color:#888;'>${row.date}</td>`;
+        html += `<td style='padding:6px 8px;text-align:center;color:#888;'>${row.time}</td>`;
+        html += `</tr>`;
+    });
+    html += `</tbody></table>`;
+    lastValuesTableContainer.innerHTML = html;
+    lastValuesTableContainer.style.display = 'block';
+}
+
+// Hauptfunktion
 async function main() {
     const locations = await fetchLocations();
     locationsCache = locations;
@@ -388,6 +465,43 @@ async function main() {
             marinaSelect.value = loc.id;
             showMarinaData(loc.id);
         });
+        // Hover: Zeige Name und letzte Messungen im Tooltip/Popup
+        marker.on('mouseover', async () => {
+            const datastreams = await fetchDatastreamsAll(loc.id);
+            let filteredDatastreams = datastreams.filter(ds => {
+                const n = ds.name.toLowerCase();
+                return !n.startsWith('latitude') && !n.startsWith('longitude');
+            });
+            const lastValues = await Promise.all(filteredDatastreams.map(async ds => {
+                // Name am * trennen
+                const dsShortName = ds.name.split('*')[0].trim();
+                try {
+                    const obsResp = await fetch(`${FROST_API}/Datastreams(${ds['@iot.id']})/Observations?$top=1&$orderby=phenomenonTime desc`);
+                    if (obsResp.ok) {
+                        const obsData = await obsResp.json();
+                        if (obsData.value.length > 0) {
+                            const obs = obsData.value[0];
+                            // Datum und Uhrzeit schön formatieren
+                            const dateObj = new Date(obs.phenomenonTime);
+                            const dateStr = dateObj.toLocaleDateString('de-DE');
+                            const timeStr = dateObj.toLocaleTimeString('de-DE', {hour: '2-digit', minute: '2-digit'});
+                            return `<div style='margin-bottom:6px;'><span style='font-weight:600;'>${dsShortName}:</span> <span style='color:#053246;'>${obs.result}</span><br><span style='font-size:0.92em;color:#888;'>${dateStr} ${timeStr}</span></div>`;
+                        }
+                    }
+                } catch (e) {}
+                return `<div style='margin-bottom:6px;'><span style='font-weight:600;'>${dsShortName}:</span> <span style='color:#888;'>n/a</span></div>`;
+            }));
+            const popupHtml = `
+                <div style='min-width:210px;padding:4px 2px 2px 2px;'>
+                    <div style='font-size:1.08em;font-weight:700;margin-bottom:8px;color:#053246;'>${loc.anzeigeName}</div>
+                    ${lastValues.join('')}
+                </div>
+            `;
+            marker.bindPopup(popupHtml, {autoPan: false, closeButton: false, className: 'soop-popup'}).openPopup();
+        });
+        marker.on('mouseout', () => {
+            marker.closePopup();
+        });
     });
     // Beim Wechsel der Auswahlbox Marina anzeigen
     marinaSelect.onchange = () => {
@@ -407,6 +521,8 @@ async function main() {
 async function showMarinaData(marinaId) {
     const loc = locationsCache.find(l => l.id == marinaId);
     if (!loc) return;
+    // Zeige die Tabelle der letzten Messwerte
+    renderLastValuesTable(loc);
     // Lade alle Datastreams für das Thing
     const datastreams = await fetchDatastreamsAll(loc.id);
     let filteredDatastreams = datastreams.filter(ds => {
