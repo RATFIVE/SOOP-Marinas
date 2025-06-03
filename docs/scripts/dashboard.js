@@ -133,6 +133,8 @@ async function fetchLocations() {
             let anzeigeName = thing.name;
             if (thing.name === 'box_gmr_twl-box_0924005') anzeigeName = 'Im Jaich, Stadthafen Flensburg';
             if (thing.name === 'box_gmr_twl-box_0924002') anzeigeName = 'Marina Kappel';
+            if (thing.name === 'Badesteg Reventlou') anzeigeName = 'Badesteg Reventlou';
+            if (thing.name === 'box_gmr_twl-box_0924004') anzeigeName = 'Schilksee';
             return {
                 id: thing['@iot.id'],
                 name: thing.name,
