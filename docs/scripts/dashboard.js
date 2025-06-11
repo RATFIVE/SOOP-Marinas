@@ -6,8 +6,8 @@
 // Schleswig-Holstein: Mittelpunkt ca. [54.4, 9.7], Zoom 8
 const map = L.map('map', {
     zoomControl: false,
-    dragging: true,
-    scrollWheelZoom: false,
+    dragging: false, // Verschieben deaktiviert
+    scrollWheelZoom: false, // Scrollen deaktiviert
     doubleClickZoom: false,
     boxZoom: false,
     keyboard: false,
@@ -229,59 +229,83 @@ function ensureTimeseriesCanvas() {
     return canvas;
 }
 
-function renderChart(observations, title = 'Messwert') {
-    const canvas = ensureTimeseriesCanvas();
-    if (!canvas) {
-        console.error('Canvas für Chart nicht gefunden!');
-        return;
-    }
-    const ctx = canvas.getContext('2d');
-    if (window.tsChart) window.tsChart.destroy();
-    // Min/Max für Y-Achse berechnen und etwas Puffer hinzufügen
-    let minY = undefined, maxY = undefined;
-    if (observations && observations.length > 0) {
-        const values = observations.map(o => o.result).filter(v => typeof v === 'number');
-        if (values.length > 0) {
-            const min = Math.min(...values);
-            const max = Math.max(...values);
-            const range = max - min;
-            const padding = range === 0 ? (min === 0 ? 1 : Math.abs(min) * 0.1) : range * 0.1;
-            minY = min - padding;
-            maxY = max + padding;
-        }
-    }
-    window.tsChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: observations.map(o => o.phenomenonTime),
-            datasets: [{
-                label: title,
-                data: observations.map(o => o.result),
-                borderColor: '#78D278', // SOOP-GRÜN
-                backgroundColor: 'rgba(120,210,120,0.15)', // SOOP-GRÜN transparent
-                fill: true,
-                pointRadius: 2
-            }]
+function renderChart(observations = [], title = 'Messwert') {
+  const canvas = ensureTimeseriesCanvas();
+  if (!canvas) {
+    console.error('Canvas für Chart nicht gefunden!');
+    return;
+  }
+  const ctx = canvas.getContext('2d');
+
+  // vorhandene Chart-Instanz zerstören
+  if (window.tsChart) {
+    window.tsChart.destroy();
+  }
+
+  // Datenpunkte für Time-Scale aufbereiten
+  const dataPoints = observations
+    .map(o => {
+      const x = new Date(o.phenomenonTime);
+      const y = typeof o.result === 'number'
+        ? o.result
+        : parseFloat(o.result);
+      return { x, y };
+    })
+    .filter(pt => !isNaN(pt.x) && !isNaN(pt.y));
+
+  // Y-Achse: Min/Max mit Padding berechnen
+  let minY, maxY;
+  if (dataPoints.length > 0) {
+    const ys = dataPoints.map(pt => pt.y);
+    const min = Math.min(...ys);
+    const max = Math.max(...ys);
+    const range = max - min;
+    const pad = range === 0
+      ? (min === 0 ? 1 : Math.abs(min) * 0.1)
+      : range * 0.1;
+    minY = min - pad;
+    maxY = max + pad;
+  }
+
+  const config = {
+    type: 'line',
+    data: {
+      datasets: [{
+        label: title,
+        data: dataPoints,
+        borderColor: '#78D278',
+        backgroundColor: 'rgba(120,210,120,0.15)',
+        fill: true,
+        pointRadius: 2
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        title: { display: true, text: title }
+      },
+      scales: {
+        x: {
+          type: 'time',
+          time: { unit: 'day' },
+          title: { display: true, text: 'Datum' }
         },
-        options: {
-            responsive: true,
-            plugins: {
-                title: {
-                    display: true,
-                    text: title
-                }
-            },
-            scales: {
-                x: { type: 'time', time: { unit: 'day' } },
-                y: {
-                    min: minY,
-                    max: maxY,
-                    title: { display: true, text: 'Messwert' }
-                }
-            }
+        y: {
+          title: { display: true, text: 'Messwert' }
+          // min/max setzen wir weiter unten nur wenn definiert
         }
-    });
+      }
+    }
+  };
+
+  // min/max nur hinzufügen, wenn sie auch berechnet wurden
+  if (minY != null) config.options.scales.y.min = minY;
+  if (maxY != null) config.options.scales.y.max = maxY;
+
+  // Chart erstellen und global speichern
+  window.tsChart = new Chart(ctx, config);
 }
+
 
 // Neue Funktion für Multi-Liniendiagramm
 function renderChartMulti(datasets, title = 'Messwerte') {
@@ -352,7 +376,7 @@ function renderChartMulti(datasets, title = 'Messwerte') {
             }
         }
     });
-} // Funktion korrekt geschlossen
+}
 
 // Login-Logik für Admin
 const loginForm = document.getElementById('loginForm');
@@ -491,69 +515,7 @@ async function renderLastValuesTable(loc) {
     lastValuesTableContainer.style.display = 'block';
 }
 
-// Wetterdaten von Open-Meteo API holen
-// Wetterdaten-Cache für die Session
-// const weatherCache = {};
 
-// async function fetchWeatherData(lat, lon) {
-//     const key = `${lat.toFixed(4)},${lon.toFixed(4)}`;
-//     if (weatherCache[key]) {
-//         return weatherCache[key];
-//     }
-//     // Open-Meteo API: https://open-meteo.com/
-//     // Wir holen aktuelle Werte für windspeed_10m, temperature_2m, winddirection_10m, pressure_msl
-//     const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&hourly=temperature_2m,pressure_msl,winddirection_10m,windspeed_10m&timezone=auto`;
-//     try {
-//         const resp = await fetch(url);
-//         if (!resp.ok) return null;
-//         const data = await resp.json();
-//         if (!data.current_weather) return null;
-//         const weather = {
-//             windspeed: data.current_weather.windspeed,
-//             winddirection: data.current_weather.winddirection,
-//             temperature: data.current_weather.temperature,
-//             pressure: data.current_weather.pressure_msl || (data.hourly && data.hourly.pressure_msl ? data.hourly.pressure_msl[0] : null),
-//             time: data.current_weather.time
-//         };
-//         weatherCache[key] = weather;
-//         return weather;
-//     } catch (e) {
-//         return null;
-//     }
-// }
-
-// Wetterdaten in der Tabelle anzeigen (unterhalb der FROST-Messwerte)
-// async function renderWeatherTable(loc) {
-//     if (!loc || !loc.lat || !loc.lon) return;
-//     const weather = await fetchWeatherData(loc.lat, loc.lon);
-//     let html = `<div style='font-size:1.08em;font-weight:700;margin-bottom:10px;color:#053246;'>Aktuelle Wetterdaten</div>`;
-//     if (!weather) {
-//         html += `<div style='color:#888;'>Keine Wetterdaten verfügbar</div>`;
-//     } else {
-//         const dateObj = new Date(weather.time);
-//         const dateStr = dateObj.toLocaleDateString('de-DE');
-//         const timeStr = dateObj.toLocaleTimeString('de-DE', {hour: '2-digit', minute: '2-digit'});
-//         html += `<table style='width:100%;border-collapse:collapse;margin-bottom:8px;'>`;
-//         html += `<thead><tr style='background:#f5f5f5;'><th style='text-align:left;padding:6px 8px;'>Parameter</th><th style='text-align:right;padding:6px 8px;'>Wert</th><th style='text-align:center;padding:6px 8px;'>Datum</th><th style='text-align:center;padding:6px 8px;'>Uhrzeit</th></tr></thead>`;
-//         html += `<tbody>`;
-//         html += `<tr><td style='padding:6px 8px;'>${getDisplayName('temperature')}</td><td style='padding:6px 8px;text-align:right;'>${weather.temperature} °C</td><td style='padding:6px 8px;text-align:center;color:#888;'>${dateStr}</td><td style='padding:6px 8px;text-align:center;color:#888;'>${timeStr}</td></tr>`;
-//         html += `<tr><td style='padding:6px 8px;'>${getDisplayName('windspeed')}</td><td style='padding:6px 8px;text-align:right;'>${weather.windspeed} km/h</td><td style='padding:6px 8px;text-align:center;color:#888;'>${dateStr}</td><td style='padding:6px 8px;text-align:center;color:#888;'>${timeStr}</td></tr>`;
-//         html += `<tr><td style='padding:6px 8px;'>${getDisplayName('winddirection')}</td><td style='padding:6px 8px;text-align:right;'>${weather.winddirection}°</td><td style='padding:6px 8px;text-align:center;color:#888;'>${dateStr}</td><td style='padding:6px 8px;text-align:center;color:#888;'>${timeStr}</td></tr>`;
-//         html += `<tr><td style='padding:6px 8px;'>${getDisplayName('pressure')}</td><td style='padding:6px 8px;text-align:right;'>${weather.pressure ? weather.pressure + ' hPa' : 'n/a'}</td><td style='padding:6px 8px;text-align:center;color:#888;'>${dateStr}</td><td style='padding:6px 8px;text-align:center;color:#888;'>${timeStr}</td></tr>`;
-//         html += `</tbody></table>`;
-//     }
-//     // Wetterdaten unter die FROST-Tabelle einfügen
-//     const lastValuesTableContainer = document.getElementById('lastValuesTableContainer');
-//     if (lastValuesTableContainer) {
-//         let weatherDiv = document.getElementById('weatherTableContainer');
-//         if (!weatherDiv) {
-//             weatherDiv = document.createElement('div');
-//             weatherDiv.id = 'weatherTableContainer';
-//             lastValuesTableContainer.appendChild(weatherDiv);
-//         }
-//         weatherDiv.innerHTML = html;
-//     }
-// }
 
 // Mapping für sprechende Namen und Einheiten
 const DISPLAY_NAME_MAP = {
@@ -588,7 +550,92 @@ function isBatteryVoltage(shortName) {
     return key === 'battery_voltage';
 }
 
-// Hauptfunktion
+// --- Hilfsfunktion für Battery Chart ---
+function renderBatteryChart(observations = [], title = 'Batterie-Spannung') {
+  const container = document.getElementById('chartContainer3');
+  const canvas    = document.getElementById('timeseriesChart3');
+  if (!container || !canvas) return;
+
+  // Alte Chart-Instanz zerstören
+  if (window.tsChart3) {
+    window.tsChart3.destroy();
+  }
+
+  // Kein Data → ausblenden
+  if (observations.length === 0) {
+    container.style.display = 'none';
+    return;
+  } else {
+    container.style.display = '';
+  }
+
+  const ctx = canvas.getContext('2d');
+
+  // Datenpunkte fürs Time-Scale
+  const dataPoints = observations
+    .map(o => ({
+      x: new Date(o.phenomenonTime),
+      y: typeof o.result === 'number'
+           ? o.result
+           : parseFloat(o.result)
+    }))
+    .filter(pt => !isNaN(pt.x) && !isNaN(pt.y));
+
+  // Y-Achse Min/Max mit Padding berechnen
+  let minY, maxY;
+  if (dataPoints.length) {
+    const ys    = dataPoints.map(pt => pt.y);
+    const min   = Math.min(...ys);
+    const max   = Math.max(...ys);
+    const range = max - min;
+    const pad   = range === 0
+      ? (min === 0 ? 0.1 : Math.abs(min) * 0.05)
+      : range * 0.1;
+    minY = min - pad;
+    maxY = max + pad;
+  }
+
+  // Chart-Konfiguration
+  const chartConfig = {
+    type: 'line',
+    data: {
+      datasets: [{
+        label: title,
+        data: dataPoints,
+        borderColor: '#FFA500',
+        backgroundColor: 'rgba(255,165,0,0.10)',
+        fill: true,
+        pointRadius: 2
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        title: { display: true, text: title }
+      },
+      scales: {
+        x: {
+          type: 'time',
+          time: { unit: 'day' },
+          title: { display: true, text: 'Datum' }
+        },
+        y: {
+          title: { display: true, text: 'Spannung (V)' }
+          // min/max setzen wir unten nur, wenn definiert
+        }
+      }
+    }
+  };
+
+  // min/max nur hinzufügen, wenn berechnet
+  if (minY != null) chartConfig.options.scales.y.min = minY;
+  if (maxY != null) chartConfig.options.scales.y.max = maxY;
+
+  // Chart erzeugen
+  window.tsChart3 = new Chart(ctx, chartConfig);
+}
+
+// --- Initialisierung und Hauptfunktion ---
 async function main() {
     const locations = await fetchLocations();
     locationsCache = locations;
@@ -604,6 +651,8 @@ async function main() {
     const defaultLoc = locations.find(l => l.name === 'Badesteg Reventlou');
     if (defaultLoc) marinaSelect.value = defaultLoc.id;
     // Marker mit Hover-Tooltip (Thing-Name)
+    if (window._soopMarkers) window._soopMarkers.forEach(m => map.removeLayer(m));
+    window._soopMarkers = [];
     locations.forEach(loc => {
         const marker = L.marker([loc.lat, loc.lon], {icon: soopRedIcon}).addTo(map);
         marker.bindTooltip(loc.anzeigeName, {permanent: false, direction: 'top'});
@@ -611,7 +660,6 @@ async function main() {
             marinaSelect.value = loc.id;
             showMarinaData(loc.id);
         });
-        // Hover: Zeige Name und letzte Messungen im Tooltip/Popup
         marker.on('mouseover', async () => {
             const datastreams = await fetchDatastreamsAll(loc.id);
             let filteredDatastreams = datastreams.filter(ds => {
@@ -649,12 +697,19 @@ async function main() {
                     ${lastValues.join('')}
                 </div>
             `;
-            marker.bindPopup(popupHtml, {autoPan: false, closeButton: false, className: 'soop-popup'}).openPopup();
+            marker.bindPopup(popupHtml, {autoPan: true, closeButton: false, className: 'soop-popup'}).openPopup();
         });
         marker.on('mouseout', () => {
             marker.closePopup();
         });
+        window._soopMarkers.push(marker);
     });
+    // Karte auf Mittelwert der Marinas zentrieren
+    if (locations.length > 0) {
+        const avgLat = locations.reduce((sum, l) => sum + l.lat, 0) / locations.length;
+        const avgLon = locations.reduce((sum, l) => sum + l.lon, 0) / locations.length;
+        map.setView([avgLat, avgLon], 10); // Zoomstufe ggf. anpassen
+    }
     // Beim Wechsel der Auswahlbox Marina anzeigen
     marinaSelect.onchange = () => {
         showMarinaData(marinaSelect.value);
@@ -670,6 +725,7 @@ async function main() {
     }
 }
 
+// --- Ursprüngliche showMarinaData wiederherstellen ---
 async function showMarinaData(marinaId) {
     const loc = locationsCache.find(l => l.id == marinaId);
     if (!loc) return;
@@ -828,36 +884,4 @@ async function showMarinaData(marinaId) {
     updateCharts();
     timeRangeSelect.onchange = updateCharts;
     dataSection.scrollIntoView({behavior: 'smooth'});
-}
-
-// Neue Admin-Logik für die Anzeige der battery_voltage Übersicht
-function showLogoutButton() {
-    let logoutBtn = document.getElementById('logoutBtn');
-    if (!logoutBtn) {
-        logoutBtn = document.createElement('button');
-        logoutBtn.id = 'logoutBtn';
-        logoutBtn.textContent = 'Logout';
-        logoutBtn.style.position = 'absolute';
-        logoutBtn.style.top = '20px';
-        logoutBtn.style.right = '30px';
-        logoutBtn.style.zIndex = 2001;
-        logoutBtn.style.background = '#fff';
-        logoutBtn.style.border = '1px solid #0074D9';
-        logoutBtn.style.color = '#0074D9';
-        logoutBtn.style.padding = '6px 16px';
-        logoutBtn.style.borderRadius = '8px';
-        logoutBtn.style.cursor = 'pointer';
-        document.body.appendChild(logoutBtn);
-        logoutBtn.onclick = function() {
-            isAdmin = false;
-            logoutBtn.remove();
-            loginBox.style.display = 'flex';
-            datastreamSelect.innerHTML = '';
-            datastreamSelectContainer.style.display = 'none';
-            renderChart([], '');
-            hideBatteryOverview(); // Fenster mit der Spannung aller Geräte schließen
-            // Nach Logout: Auswahlbox und Marker neu laden (ohne Admin-Things)
-            main();
-        };
-    }
 }
