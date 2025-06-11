@@ -61,8 +61,33 @@ function showBatteryOverview(batteryData) {
         batteryOverview.style.minWidth = '220px';
         batteryOverview.style.maxHeight = '60vh';
         batteryOverview.style.overflowY = 'auto';
-        batteryOverview.innerHTML = '<b>Spannung aller Geräte</b><br><div id="batteryList"></div>';
+        batteryOverview.style.cursor = 'move';
+        batteryOverview.innerHTML = '<b>Spannung aller Geräte</b><span id="batteryOverviewClose" style="float:right;cursor:pointer;font-size:1.2em;">&times;</span><br><div id="batteryList"></div>';
         document.body.appendChild(batteryOverview);
+        // Drag & Drop-Logik
+        let isDragging = false, dragOffsetX = 0, dragOffsetY = 0;
+        batteryOverview.addEventListener('mousedown', function(e) {
+            if (e.target.id === 'batteryOverviewClose') return;
+            isDragging = true;
+            dragOffsetX = e.clientX - batteryOverview.getBoundingClientRect().left;
+            dragOffsetY = e.clientY - batteryOverview.getBoundingClientRect().top;
+            document.body.style.userSelect = 'none';
+        });
+        document.addEventListener('mousemove', function(e) {
+            if (isDragging) {
+                batteryOverview.style.left = (e.clientX - dragOffsetX) + 'px';
+                batteryOverview.style.top = (e.clientY - dragOffsetY) + 'px';
+                batteryOverview.style.right = '';
+            }
+        });
+        document.addEventListener('mouseup', function() {
+            isDragging = false;
+            document.body.style.userSelect = '';
+        });
+        // Schließen-Button
+        batteryOverview.querySelector('#batteryOverviewClose').onclick = function() {
+            hideBatteryOverview();
+        };
     }
     const list = batteryOverview.querySelector('#batteryList');
     list.innerHTML = batteryData.map(b => `<div style="margin-bottom:6px;"><b>${b.name}</b>: <span style="color:${b.value < 3.5 ? 'var(--soop-red)' : 'var(--soop-green)'}">${b.value ? b.value.toFixed(2) + ' V' : 'n/a'}</span></div>`).join('');
@@ -392,6 +417,7 @@ if (loginForm) {
         if (user === 'admin' && pw === 'admin123') {
             loginStatus.textContent = 'Login erfolgreich!';
             loginStatus.style.color = 'green';
+            isAdmin = true; // <-- Vor Funktionsaufrufen setzen!
             setTimeout(async () => {
                 loginBox.style.display = 'none';
                 showLogoutButton();
@@ -400,7 +426,6 @@ if (loginForm) {
                 const batteryData = await fetchAllBatteryVoltages(locations);
                 showBatteryOverview(batteryData);
             }, 1000);
-            isAdmin = true;
         } else {
             loginStatus.textContent = 'Login fehlgeschlagen!';
             loginStatus.style.color = 'red';
