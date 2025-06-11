@@ -352,7 +352,7 @@ function renderChartMulti(datasets, title = 'Messwerte') {
             }
         }
     });
-}
+} // Funktion korrekt geschlossen
 
 // Login-Logik für Admin
 const loginForm = document.getElementById('loginForm');
@@ -436,6 +436,8 @@ async function renderLastValuesTable(loc) {
         // Battery Voltage nur für Admin
         const dsShortName = ds.name.split('*')[0].trim();
         if (isBatteryVoltage(dsShortName) && !isAdmin) return false;
+        // Standardabweichung nur für Admin
+        if (dsShortName.toLowerCase() === 'standard_deviation' && !isAdmin) return false;
         return true;
     });
     if (!filteredDatastreams.length) return;
@@ -618,6 +620,8 @@ async function main() {
                 // Battery Voltage nur für Admin
                 const dsShortName = ds.name.split('*')[0].trim();
                 if (isBatteryVoltage(dsShortName) && !isAdmin) return false;
+                // Standardabweichung nur für Admin
+                if (dsShortName.toLowerCase() === 'standard_deviation' && !isAdmin) return false;
                 return true;
             });
             const lastValues = await Promise.all(filteredDatastreams.map(async ds => {
@@ -671,8 +675,6 @@ async function showMarinaData(marinaId) {
     if (!loc) return;
     // Zeige die Tabelle der letzten Messwerte
     renderLastValuesTable(loc);
-    // Zeige Wetterdaten
-    // renderWeatherTable(loc);
     // Lade alle Datastreams für das Thing
     const datastreams = await fetchDatastreamsAll(loc.id);
     let filteredDatastreams = datastreams.filter(ds => {
@@ -681,6 +683,8 @@ async function showMarinaData(marinaId) {
         // Battery Voltage nur für Admin
         const dsShortName = ds.name.split('*')[0].trim();
         if (isBatteryVoltage(dsShortName) && !isAdmin) return false;
+        // Standardabweichung nur für Admin
+        if (dsShortName.toLowerCase() === 'standard_deviation' && !isAdmin) return false;
         return true;
     });
     if (!isAdmin) {
@@ -690,6 +694,8 @@ async function showMarinaData(marinaId) {
         dataTitle.textContent = loc.name + ' (Keine Messdaten)';
         datastreamSelect.innerHTML = '';
         renderChart([], `${loc.name} (Keine Messdaten)`);
+        // Leere das zweite Diagramm
+        if (window.tsChart2) window.tsChart2.destroy();
         dataSection.scrollIntoView({behavior: 'smooth'});
         return;
     }
@@ -709,37 +715,118 @@ async function showMarinaData(marinaId) {
     for (let i = 0; i < datastreamSelect.options.length; i++) {
         datastreamSelect.options[i].selected = true;
     }
-    async function updateMultiChart() {
-        const selectedIds = Array.from(datastreamSelect.selectedOptions).map(o => o.value);
-        const datasets = [];
-        for (const dsId of selectedIds) {
-            const ds = filteredDatastreams.find(d => d['@iot.id'] == dsId);
-            const obs = await fetchObservations(dsId, timeRangeSelect.value);
-            // Fehlerbehandlung und Logging für Debug
-            if (!obs || obs.length === 0) {
-                console.warn('Keine Observations für Datastream', ds ? ds.name : dsId);
-            }
-            // Nur hinzufügen, wenn Daten vorhanden
-            if (obs && obs.length > 0) {
-                datasets.push({
-                    label: ds.name,
-                    data: obs.map(o => ({x: o.phenomenonTime, y: o.result})),
-                    borderColor: ds.name.toLowerCase().includes('battery') ? '#FF6666' : '#78D278',
-                    backgroundColor: ds.name.toLowerCase().includes('battery') ? 'rgba(255,102,102,0.15)' : 'rgba(120,210,120,0.15)',
-                    fill: false,
-                    pointRadius: 2
-                });
+    async function updateCharts() {
+        // IDs der gewünschten Datastreams suchen
+        const dsTempWater = filteredDatastreams.find(ds => ds.name.toLowerCase().includes('temperature_water'));
+        const dsTide = filteredDatastreams.find(ds => ds.name.toLowerCase().includes('tide_measurement'));
+        // Standardabweichung nur für Admin sichtbar
+        const dsStd = isAdmin ? filteredDatastreams.find(ds => ds.name.toLowerCase().includes('standard_deviation')) : null;
+        const dsWave = filteredDatastreams.find(ds => ds.name.toLowerCase().includes('wave_height'));
+        // 1. Diagramm: Wassertemperatur
+        let obsTemp = [];
+        if (dsTempWater) {
+            obsTemp = await fetchObservations(dsTempWater['@iot.id'], timeRangeSelect.value);
+        }
+        // Wenn keine Daten vorhanden, prüfe auf alternative Namen wie 'wtemp'
+        if ((!obsTemp || obsTemp.length === 0) && filteredDatastreams.length > 0) {
+            const dsWTemp = filteredDatastreams.find(ds => ds.name.toLowerCase().includes('wtemp'));
+            if (dsWTemp) {
+                obsTemp = await fetchObservations(dsWTemp['@iot.id'], timeRangeSelect.value);
             }
         }
-        if (datasets.length === 0) {
-            renderChart([], loc.anzeigeName + ' (Keine Messdaten)');
+        if (obsTemp && obsTemp.length > 0) {
+            renderChart(obsTemp, getDisplayName('temperature_water'));
         } else {
-            renderChartMulti(datasets, loc.anzeigeName);
+            renderChart([], 'Wassertemperatur (keine Daten)');
+        }
+        // Prüfe, ob mindestens einer der anderen Parameter vorhanden ist
+        const hasOther = dsTide || dsStd || dsWave;
+        const isReventlou = loc.name === 'Badesteg Reventlou' || loc.anzeigeName === 'Badesteg Reventlou';
+        const chartContainer2 = document.getElementById('chartContainer2');
+        if (isReventlou || !hasOther) {
+            // Zweites Diagramm ausblenden/leeren
+            if (window.tsChart2) window.tsChart2.destroy();
+            if (chartContainer2) chartContainer2.style.display = 'none';
+        } else {
+            if (chartContainer2) chartContainer2.style.display = '';
+            const datasets2 = [];
+            if (dsTide) {
+                const obsTide = await fetchObservations(dsTide['@iot.id'], timeRangeSelect.value);
+                if (obsTide && obsTide.length > 0) {
+                    datasets2.push({
+                        label: getDisplayName('tide_measurement'),
+                        data: obsTide.map(o => ({x: o.phenomenonTime, y: o.result}))
+                    });
+                }
+            }
+            // Standardabweichung nur für Admin
+            if (dsStd && isAdmin) {
+                const obsStd = await fetchObservations(dsStd['@iot.id'], timeRangeSelect.value);
+                if (obsStd && obsStd.length > 0) {
+                    datasets2.push({
+                        label: getDisplayName('standard_deviation'),
+                        data: obsStd.map(o => ({x: o.phenomenonTime, y: o.result}))
+                    });
+                }
+            }
+            if (dsWave) {
+                const obsWave = await fetchObservations(dsWave['@iot.id'], timeRangeSelect.value);
+                if (obsWave && obsWave.length > 0) {
+                    datasets2.push({
+                        label: getDisplayName('wave_height'),
+                        data: obsWave.map(o => ({x: o.phenomenonTime, y: o.result}))
+                    });
+                }
+            }
+            const canvas2 = document.getElementById('timeseriesChart2');
+            if (window.tsChart2) window.tsChart2.destroy();
+            if (canvas2 && datasets2.length > 0) {
+                // Farben für die Linien
+                const colorPalette = ['#78D278', '#FF6666', '#053246'];
+                let allLabels = [];
+                datasets2.forEach(ds => {
+                    allLabels = allLabels.concat(ds.data.map(d => d.x));
+                });
+                allLabels = Array.from(new Set(allLabels)).sort();
+                const chartData2 = {
+                    labels: allLabels,
+                    datasets: datasets2.map((ds, i) => ({
+                        ...ds,
+                        borderColor: colorPalette[i % colorPalette.length],
+                        backgroundColor: colorPalette[i % colorPalette.length] + '33',
+                        fill: false,
+                        pointRadius: 2,
+                        data: allLabels.map(label => {
+                            const found = ds.data.find(d => d.x === label);
+                            return found ? found.y : null;
+                        })
+                    }))
+                };
+                window.tsChart2 = new Chart(canvas2.getContext('2d'), {
+                    type: 'line',
+                    data: chartData2,
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: 'Wasserstand, Standardabweichung, Wellenhöhe'
+                            }
+                        },
+                        scales: {
+                            x: { type: 'time', time: { unit: 'day' }, title: { display: true, text: 'Zeit' } },
+                            y: { title: { display: true, text: 'Messwert' } }
+                        }
+                    }
+                });
+            } else if (canvas2) {
+                const ctx2 = canvas2.getContext('2d');
+                ctx2.clearRect(0, 0, canvas2.width, canvas2.height);
+            }
         }
     }
-    updateMultiChart();
-    datastreamSelect.onchange = updateMultiChart;
-    timeRangeSelect.onchange = updateMultiChart;
+    updateCharts();
+    timeRangeSelect.onchange = updateCharts;
     dataSection.scrollIntoView({behavior: 'smooth'});
 }
 
