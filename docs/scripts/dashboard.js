@@ -196,7 +196,8 @@ function getTimeFilter(range) {
     } else if (range === '7d') {
         from = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
     } else if (range === '1y') {
-        from = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
+        // 356 Tage statt 365 Tage
+        from = new Date(now.getTime() - 356 * 24 * 60 * 60 * 10000);
     } else {
         from = null;
     }
@@ -236,6 +237,19 @@ function renderChart(observations, title = 'Messwert') {
     }
     const ctx = canvas.getContext('2d');
     if (window.tsChart) window.tsChart.destroy();
+    // Min/Max für Y-Achse berechnen und etwas Puffer hinzufügen
+    let minY = undefined, maxY = undefined;
+    if (observations && observations.length > 0) {
+        const values = observations.map(o => o.result).filter(v => typeof v === 'number');
+        if (values.length > 0) {
+            const min = Math.min(...values);
+            const max = Math.max(...values);
+            const range = max - min;
+            const padding = range === 0 ? (min === 0 ? 1 : Math.abs(min) * 0.1) : range * 0.1;
+            minY = min - padding;
+            maxY = max + padding;
+        }
+    }
     window.tsChart = new Chart(ctx, {
         type: 'line',
         data: {
@@ -259,7 +273,11 @@ function renderChart(observations, title = 'Messwert') {
             },
             scales: {
                 x: { type: 'time', time: { unit: 'day' } },
-                y: { beginAtZero: true }
+                y: {
+                    min: minY,
+                    max: maxY,
+                    title: { display: true, text: 'Messwert' }
+                }
             }
         }
     });
@@ -274,18 +292,20 @@ function renderChartMulti(datasets, title = 'Messwerte') {
     }
     const ctx = canvas.getContext('2d');
     if (window.tsChart) window.tsChart.destroy();
+    // Min/Max für Y-Achse berechnen (über alle Datasets) und etwas Puffer hinzufügen
+    let minY = undefined, maxY = undefined;
+    const allValues = datasets.flatMap(ds => ds.data.map(d => d.y).filter(v => typeof v === 'number'));
+    if (allValues.length > 0) {
+        const min = Math.min(...allValues);
+        const max = Math.max(...allValues);
+        const range = max - min;
+        const padding = range === 0 ? (min === 0 ? 1 : Math.abs(min) * 0.1) : range * 0.1;
+        minY = min - padding;
+        maxY = max + padding;
+    }
     // Farben für die Linien
     const colorPalette = [
-        '#78D278', // SOOP-Grün
-        '#FF6666', // SOOP-Rot
-        '#053246', // SOOP-Blau
-        '#FFA500', // Orange
-        '#8A2BE2', // Lila
-        '#00BFFF', // Hellblau
-        '#FFD700', // Gelb
-        '#FF69B4', // Pink
-        '#A0522D', // Braun
-        '#20B2AA'  // Türkis
+        '#78D278', '#FF6666', '#053246', '#FFA500', '#8A2BE2', '#00BFFF', '#FFD700', '#FF69B4', '#A0522D', '#20B2AA'
     ];
     // Hilfsfunktion für Legenden-Label: nur bis zum ersten * anzeigen
     function shortLabel(name) {
@@ -324,7 +344,11 @@ function renderChartMulti(datasets, title = 'Messwerte') {
             },
             scales: {
                 x: { type: 'time', time: { unit: 'day' }, title: { display: true, text: 'Zeit' } },
-                y: { beginAtZero: true, title: { display: true, text: 'Messwert' } }
+                y: {
+                    min: minY,
+                    max: maxY,
+                    title: { display: true, text: 'Messwert' }
+                }
             }
         }
     });
@@ -419,6 +443,7 @@ async function renderLastValuesTable(loc) {
     const lastValues = await Promise.all(filteredDatastreams.map(async ds => {
         const dsShortName = ds.name.split('*')[0].trim();
         const displayName = getDisplayName(dsShortName);
+        const unit = getUnit(dsShortName);
         try {
             const obsResp = await fetch(`${FROST_API}/Datastreams(${ds['@iot.id']})/Observations?$top=1&$orderby=phenomenonTime desc`);
             if (obsResp.ok) {
@@ -431,6 +456,7 @@ async function renderLastValuesTable(loc) {
                     return {
                         name: displayName,
                         value: obs.result,
+                        unit: unit,
                         date: dateStr,
                         time: timeStr
                     };
@@ -440,6 +466,7 @@ async function renderLastValuesTable(loc) {
         return {
             name: displayName,
             value: 'n/a',
+            unit: unit,
             date: '-',
             time: '-'
         };
@@ -452,7 +479,7 @@ async function renderLastValuesTable(loc) {
     lastValues.forEach(row => {
         html += `<tr style='border-bottom:1px solid #e0e0e0;'>`;
         html += `<td style='padding:6px 8px;'>${row.name}</td>`;
-        html += `<td style='padding:6px 8px;text-align:right;color:#053246;font-weight:600;'>${row.value}</td>`;
+        html += `<td style='padding:6px 8px;text-align:right;color:#053246;font-weight:600;'>${row.value !== 'n/a' ? row.value + ' ' + row.unit : 'n/a'}</td>`;
         html += `<td style='padding:6px 8px;text-align:center;color:#888;'>${row.date}</td>`;
         html += `<td style='padding:6px 8px;text-align:center;color:#888;'>${row.time}</td>`;
         html += `</tr>`;
@@ -526,26 +553,31 @@ async function renderLastValuesTable(loc) {
 //     }
 // }
 
-// Mapping für sprechende Namen
+// Mapping für sprechende Namen und Einheiten
 const DISPLAY_NAME_MAP = {
-    'battery_voltage': 'Batterie-Spannung',
-    'temperature': 'Temperatur',
-    'temperature_water': 'Wassertemperatur',
-    'wtemp': 'Wassertemperatur',
-    'tide_measurement': 'Wasserstand (Abweichung vom mittlerem Wasserstand)',
-    'water_level': 'Wasserstand',
-    'standard_deviation': 'Standardabweichung Wasserstand',
-    'wave_height': 'Wellenhöhe',
-    'windspeed': 'Windgeschwindigkeit',
-    'winddirection': 'Windrichtung',
-    'pressure': 'Luftdruck',
-    'lufttemperatur': 'Lufttemperatur',
+    'battery_voltage': { label: 'Batterie-Spannung', unit: 'V' },
+    'temperature': { label: 'Temperatur', unit: '°C' },
+    'temperature_water': { label: 'Wassertemperatur', unit: '°C' },
+    'wtemp': { label: 'Wassertemperatur', unit: '°C' },
+    'tide_measurement': { label: 'Wasserstand (Abweichung vom mittleren Wasserstand)', unit: 'cm' },
+    'water_level': { label: 'Wasserstand', unit: 'cm' },
+    'standard_deviation': { label: 'Standardabweichung Wasserstand', unit: 'cm' },
+    'wave_height': { label: 'Wellenhöhe', unit: 'cm' },
+    'windspeed': { label: 'Windgeschwindigkeit', unit: 'km/h' },
+    'winddirection': { label: 'Windrichtung', unit: '°' },
+    'pressure': { label: 'Luftdruck', unit: 'hPa' },
+    'lufttemperatur': { label: 'Lufttemperatur', unit: '°C' },
     // weitere Zuordnungen nach Bedarf
 };
 function getDisplayName(shortName) {
     const key = shortName.toLowerCase().replace(/\s/g, '_');
-    if (DISPLAY_NAME_MAP[key]) return DISPLAY_NAME_MAP[key];
+    if (DISPLAY_NAME_MAP[key]) return DISPLAY_NAME_MAP[key].label;
     return shortName.charAt(0).toUpperCase() + shortName.slice(1);
+}
+function getUnit(shortName) {
+    const key = shortName.toLowerCase().replace(/\s/g, '_');
+    if (DISPLAY_NAME_MAP[key]) return DISPLAY_NAME_MAP[key].unit || '';
+    return '';
 }
 
 // Hilfsfunktion: Prüft, ob ein Datastream-Name (shortName) ein Battery Voltage ist
@@ -591,17 +623,17 @@ async function main() {
             const lastValues = await Promise.all(filteredDatastreams.map(async ds => {
                 const dsShortName = ds.name.split('*')[0].trim();
                 const displayName = getDisplayName(dsShortName);
+                const unit = getUnit(dsShortName);
                 try {
                     const obsResp = await fetch(`${FROST_API}/Datastreams(${ds['@iot.id']})/Observations?$top=1&$orderby=phenomenonTime desc`);
                     if (obsResp.ok) {
                         const obsData = await obsResp.json();
                         if (obsData.value.length > 0) {
                             const obs = obsData.value[0];
-                            // Datum und Uhrzeit schön formatieren
                             const dateObj = new Date(obs.phenomenonTime);
                             const dateStr = dateObj.toLocaleDateString('de-DE');
                             const timeStr = dateObj.toLocaleTimeString('de-DE', {hour: '2-digit', minute: '2-digit'});
-                            return `<div style='margin-bottom:6px;'><span style='font-weight:600;'>${displayName}:</span> <span style='color:#053246;'>${obs.result}</span><br><span style='font-size:0.92em;color:#888;'>${dateStr} ${timeStr}</span></div>`;
+                            return `<div style='margin-bottom:6px;'><span style='font-weight:600;'>${displayName}:</span> <span style='color:#053246;'>${obs.result} ${unit}</span><br><span style='font-size:0.92em;color:#888;'>${dateStr} ${timeStr}</span></div>`;
                         }
                     }
                 } catch (e) {}
