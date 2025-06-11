@@ -140,7 +140,7 @@ async function fetchLocations() {
             }
             let anzeigeName = thing.name;
             if (thing.name === 'box_gmr_twl-box_0924005') anzeigeName = 'Im Jaich, Stadthafen Flensburg';
-            if (thing.name === 'box_gmr_twl-box_0924002') anzeigeName = 'Marina Kappel';
+            if (thing.name === 'box_gmr_twl-box_0924002') anzeigeName = 'Kappeln/Grauhöft, Werfthafen Stapelfeld';
             if (thing.name === 'Badesteg Reventlou') anzeigeName = 'Badesteg Reventlou';
             if (thing.name === 'box_gmr_twl-box_0924004') anzeigeName = 'Schilksee';
             return {
@@ -528,18 +528,18 @@ async function renderLastValuesTable(loc) {
 
 // Mapping für sprechende Namen
 const DISPLAY_NAME_MAP = {
-    'battery_voltage': 'Battery Voltage',
-    'temperature': 'Temperature',
-    'temperature_water': 'Water Temperature',
-    'wtemp': 'Water Temperature',
-    'tide_measurement': 'Water Level',
-    'water_level': 'Water Level',
-    'standard_deviation': 'Standard Deviation Water Level',
-    'wave_height': 'Wave Height',
-    'windspeed': 'Wind Speed',
-    'winddirection': 'Wind Direction',
-    'pressure': 'Air Pressure',
-    'lufttemperatur': 'Air Temperature',
+    'battery_voltage': 'Batterie-Spannung',
+    'temperature': 'Temperatur',
+    'temperature_water': 'Wassertemperatur',
+    'wtemp': 'Wassertemperatur',
+    'tide_measurement': 'Wasserstand (Abweichung vom mittlerem Wasserstand)',
+    'water_level': 'Wasserstand',
+    'standard_deviation': 'Standardabweichung Wasserstand',
+    'wave_height': 'Wellenhöhe',
+    'windspeed': 'Windgeschwindigkeit',
+    'winddirection': 'Windrichtung',
+    'pressure': 'Luftdruck',
+    'lufttemperatur': 'Lufttemperatur',
     // weitere Zuordnungen nach Bedarf
 };
 function getDisplayName(shortName) {
