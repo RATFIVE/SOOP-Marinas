@@ -672,9 +672,9 @@ async function main() {
         opt.textContent = loc.anzeigeName;
         marinaSelect.appendChild(opt);
     });
-    // Standard: Badesteg Reventlou auswählen
-    const defaultLoc = locations.find(l => l.name === 'Badesteg Reventlou');
-    if (defaultLoc) marinaSelect.value = defaultLoc.id;
+    // Keine Marina standardmäßig auswählen
+    // const defaultLoc = locations.find(l => l.name === 'Badesteg Reventlou');
+    // if (defaultLoc) marinaSelect.value = defaultLoc.id;
     // Marker mit Hover-Tooltip (Thing-Name)
     if (window._soopMarkers) window._soopMarkers.forEach(m => map.removeLayer(m));
     window._soopMarkers = [];
@@ -740,7 +740,7 @@ async function main() {
         showMarinaData(marinaSelect.value);
     };
     // Initial Badesteg Reventlou anzeigen
-    if (defaultLoc) showMarinaData(defaultLoc.id);
+    // if (defaultLoc) showMarinaData(defaultLoc.id);
     // Admin: Zeige battery_voltage Übersicht
     if (isAdmin) {
         const batteryData = await fetchAllBatteryVoltages(locations);
@@ -749,6 +749,20 @@ async function main() {
         hideBatteryOverview();
     }
 }
+
+// Sicherstellen, dass keine Marina standardmäßig ausgewählt ist
+if (marinaSelect) {
+    marinaSelect.value = ''; // Setzt die Auswahl auf leer
+}
+
+// Event-Listener für die Auswahlbox hinzufügen
+marinaSelect.addEventListener('change', (event) => {
+    const selectedMarina = event.target.value;
+    if (selectedMarina) {
+        // Logik für die Auswahl einer Marina hier einfügen
+        console.log(`Marina ausgewählt: ${selectedMarina}`);
+    }
+});
 
 // --- Ursprüngliche showMarinaData wiederherstellen ---
 async function showMarinaData(marinaId) {
