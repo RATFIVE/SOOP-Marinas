@@ -262,12 +262,10 @@ function renderChart(observations = [], title = 'Messwert') {
   }
   const ctx = canvas.getContext('2d');
 
-  // vorhandene Chart-Instanz zerstören
   if (window.tsChart) {
     window.tsChart.destroy();
   }
 
-  // Datenpunkte für Time-Scale aufbereiten
   const dataPoints = observations
     .map(o => {
       const x = new Date(o.phenomenonTime);
@@ -278,7 +276,6 @@ function renderChart(observations = [], title = 'Messwert') {
     })
     .filter(pt => !isNaN(pt.x) && !isNaN(pt.y));
 
-  // Y-Achse: Min/Max mit Padding berechnen
   let minY, maxY;
   if (dataPoints.length > 0) {
     const ys = dataPoints.map(pt => pt.y);
@@ -316,18 +313,15 @@ function renderChart(observations = [], title = 'Messwert') {
           title: { display: true, text: 'Datum' }
         },
         y: {
-          title: { display: true, text: 'Messwert' }
-          // min/max setzen wir weiter unten nur wenn definiert
+          title: { display: true, text: '°C' }
         }
       }
     }
   };
 
-  // min/max nur hinzufügen, wenn sie auch berechnet wurden
   if (minY != null) config.options.scales.y.min = minY;
   if (maxY != null) config.options.scales.y.max = maxY;
 
-  // Chart erstellen und global speichern
   window.tsChart = new Chart(ctx, config);
 }
 
@@ -341,7 +335,7 @@ function renderChartMulti(datasets, title = 'Messwerte') {
     }
     const ctx = canvas.getContext('2d');
     if (window.tsChart) window.tsChart.destroy();
-    // Min/Max für Y-Achse berechnen (über alle Datasets) und etwas Puffer hinzufügen
+
     let minY = undefined, maxY = undefined;
     const allValues = datasets.flatMap(ds => ds.data.map(d => d.y).filter(v => typeof v === 'number'));
     if (allValues.length > 0) {
@@ -352,21 +346,21 @@ function renderChartMulti(datasets, title = 'Messwerte') {
         minY = min - padding;
         maxY = max + padding;
     }
-    // Farben für die Linien
+
     const colorPalette = [
         '#78D278', '#FF6666', '#053246', '#FFA500', '#8A2BE2', '#00BFFF', '#FFD700', '#FF69B4', '#A0522D', '#20B2AA'
     ];
-    // Hilfsfunktion für Legenden-Label: nur bis zum ersten * anzeigen
+
     function shortLabel(name) {
         return name.split('*')[0].trim();
     }
-    // X-Achse: alle Zeitpunkte aus allen Datastreams sammeln und sortieren
+
     let allLabels = [];
     datasets.forEach(ds => {
         allLabels = allLabels.concat(ds.data.map(d => d.x));
     });
     allLabels = Array.from(new Set(allLabels)).sort();
-    // Für Chart.js: labels und datasets synchronisieren
+
     const chartData = {
         labels: allLabels,
         datasets: datasets.map((ds, i) => ({
@@ -380,6 +374,7 @@ function renderChartMulti(datasets, title = 'Messwerte') {
             })
         }))
     };
+
     window.tsChart = new Chart(ctx, {
         type: 'line',
         data: chartData,
@@ -396,7 +391,12 @@ function renderChartMulti(datasets, title = 'Messwerte') {
                 y: {
                     min: minY,
                     max: maxY,
-                    title: { display: true, text: 'Messwert' }
+                    title: { 
+                        display: true, 
+                        text: 'cm', 
+                        color: '#000', // Sicherstellen, dass die Farbe sichtbar ist
+                        font: { size: 14 } // Schriftgröße anpassen
+                    }
                 }
             }
         }
@@ -896,7 +896,7 @@ async function showMarinaData(marinaId) {
                         },
                         scales: {
                             x: { type: 'time', time: { unit: 'day' }, title: { display: true, text: 'Zeit' } },
-                            y: { title: { display: true, text: 'Messwert' } }
+                            y: { title: { display: true, text: 'cm' } }
                         }
                     }
                 });
