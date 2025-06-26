@@ -4,6 +4,9 @@
 // 3. Beim Klick auf Marker Zeitreihe laden und anzeigen
 
 // Schleswig-Holstein: Mittelpunkt ca. [54.4, 9.7], Zoom 8
+// Dynamische Zoom-Stufe je nach Bildschirmbreite
+const isMobile = window.innerWidth < 700; // Schwelle ggf. anpassen
+const initialZoom = isMobile ? 6 : 8;
 const map = L.map('map', {
     zoomControl: false,
     dragging: true, // Verschieben deaktiviert
@@ -12,7 +15,7 @@ const map = L.map('map', {
     boxZoom: false,
     keyboard: false,
     touchZoom: false
-}).setView([54.4, 9.7], 8);
+}).setView([54.4, 9.7], initialZoom);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '© OpenStreetMap contributors'
 }).addTo(map);
