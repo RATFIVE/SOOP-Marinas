@@ -6,7 +6,7 @@
 // Schleswig-Holstein: Mittelpunkt ca. [54.4, 9.7], Zoom 8
 const map = L.map('map', {
     zoomControl: false,
-    dragging: false, // Verschieben deaktiviert
+    dragging: true, // Verschieben deaktiviert
     scrollWheelZoom: false, // Scrollen deaktiviert
     doubleClickZoom: false,
     boxZoom: false,
