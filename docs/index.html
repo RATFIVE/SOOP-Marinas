@@ -8,6 +8,15 @@
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+    <!-- Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-TZXYTFF00N"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-TZXYTFF00N'); // Ersetze G-TZXYTFF00N durch deine eigene GA-ID
+    </script>
+    <!-- Ende Google Analytics -->
 </head>
 <body>
     <header id="branding-header">
@@ -54,5 +63,22 @@
     </section>
     <script src="scripts/dashboard.js"></script>
     <img id="soop-logo" src="images/SOOP-Logo_Standard.svg" alt="SOOP Logo">
+    <!-- Cookie-Hinweis für Google Analytics -->
+    <div id="cookie-banner" style="position:fixed;bottom:0;left:0;width:100vw;background:#222;color:#fff;padding:16px 0;text-align:center;z-index:9999;display:none;">
+        Diese Website verwendet Cookies für Google Analytics. Mit der Nutzung der Seite stimmen Sie der Verwendung zu.
+        <button id="cookie-accept" style="margin-left:16px;padding:6px 18px;border:none;border-radius:4px;background:#78D278;color:#222;cursor:pointer;">OK</button>
+        <a href="/datenschutz.html" style="color:#fff;text-decoration:underline;margin-left:16px;">Mehr erfahren</a>
+    </div>
+    <script>
+    // Cookie-Banner anzeigen, wenn noch nicht akzeptiert
+    if (!localStorage.getItem('cookieAccepted')) {
+        document.getElementById('cookie-banner').style.display = 'block';
+    }
+    document.getElementById('cookie-accept').onclick = function() {
+        localStorage.setItem('cookieAccepted', '1');
+        document.getElementById('cookie-banner').style.display = 'none';
+    };
+    </script>
+    <!-- Ende Cookie-Hinweis -->
 </body>
 </html>
