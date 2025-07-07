@@ -301,7 +301,7 @@ function renderChart(observations = [], title = 'Messwert') {
         borderColor: '#78D278',
         backgroundColor: 'rgba(120,210,120,0.15)',
         fill: true,
-        pointRadius: 2
+        pointRadius: 0 // Remove points from the line chart
       }]
     },
     options: {
@@ -633,7 +633,7 @@ function renderBatteryChart(observations = [], title = 'Batterie-Spannung') {
         borderColor: '#FFA500',
         backgroundColor: 'rgba(255,165,0,0.10)',
         fill: true,
-        pointRadius: 2
+        pointRadius: 0
       }]
     },
     options: {
@@ -930,7 +930,7 @@ async function showMarinaData(marinaId) {
                         borderColor: colorPalette[i % colorPalette.length],
                         backgroundColor: colorPalette[i % colorPalette.length] + '33',
                         fill: false,
-                        pointRadius: 2,
+                        pointRadius: 0,
                         data: allLabels.map(label => {
                             const found = ds.data.find(d => d.x === label);
                             return found ? found.y : null;
