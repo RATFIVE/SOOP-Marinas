@@ -732,6 +732,26 @@ async function main() {
         });
         window._soopMarkers.push(marker);
     });
+    // Graue Marker für zusätzliche Marinas hinzufügen
+    const additionalMarinas = [
+        { name: 'Marina Heiligenhafen (Demnächst verfügbar)', lat: 54.3755, lon: 10.9845 },
+        { name: 'Marina Lübeck "The Newport" (Demnächst verfügbar)', lat: 53.8734, lon: 10.6834 }
+    ];
+
+    additionalMarinas.forEach(marina => {
+        const grayIcon = new L.Icon({
+            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-grey.png',
+            shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
+            iconSize: [25, 41],
+            iconAnchor: [12, 41],
+            popupAnchor: [1, -34],
+            shadowSize: [41, 41]
+        });
+
+        const marker = L.marker([marina.lat, marina.lon], { icon: grayIcon }).addTo(map);
+        marker.bindTooltip(marina.name, { permanent: false, direction: 'top' });
+    });
+
     // Karte auf Mittelwert der Marinas zentrieren
     if (locations.length > 0) {
         const avgLat = locations.reduce((sum, l) => sum + l.lat, 0) / locations.length;
@@ -751,6 +771,23 @@ async function main() {
     } else {
         hideBatteryOverview();
     }
+
+    // Karte zentrieren und Zoom anpassen, sodass alle Marker sichtbar sind
+    function fitMapToMarkers() {
+        const allMarkers = [
+            ...locationsCache.map(loc => [loc.lat, loc.lon]),
+            [54.3755, 10.9845], // Marina Heiligenhafen
+            [53.8734, 10.6834]  // Marina Lübeck "The Newport"
+        ];
+
+        if (allMarkers.length > 0) {
+            const bounds = L.latLngBounds(allMarkers);
+            map.fitBounds(bounds, { padding: [20, 20] }); // Padding für etwas Abstand
+        }
+    }
+
+    // Rufe die Funktion nach dem Hinzufügen der Marker auf
+    fitMapToMarkers();
 }
 
 // Sicherstellen, dass keine Marina standardmäßig ausgewählt ist
