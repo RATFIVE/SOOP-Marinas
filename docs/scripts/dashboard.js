@@ -225,7 +225,7 @@ function getTimeFilter(range) {
         from = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
     } else if (range === '1y') {
         // 365 Tage statt 356 Tage
-        from = new Date(now.getTime() - 365 * 24 * 60 * 60 * 10000);
+        from = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
     } else {
         from = null;
     }
