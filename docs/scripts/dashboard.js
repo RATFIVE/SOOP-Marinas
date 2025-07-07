@@ -6,7 +6,7 @@
 // Schleswig-Holstein: Mittelpunkt ca. [54.4, 9.7], Zoom 8
 // Dynamische Zoom-Stufe je nach Bildschirmbreite
 const isMobile = window.innerWidth < 700; // Schwelle ggf. anpassen
-const initialZoom = isMobile ? 6 : 8;
+const initialZoom = isMobile ? 5 : 7; // Adjusted zoom levels for mobile and desktop to zoom out more
 const map = L.map('map', {
     zoomControl: false,
     dragging: true, // Verschieben deaktiviert
@@ -756,7 +756,7 @@ async function main() {
     if (locations.length > 0) {
         const avgLat = locations.reduce((sum, l) => sum + l.lat, 0) / locations.length;
         const avgLon = locations.reduce((sum, l) => sum + l.lon, 0) / locations.length;
-        map.setView([avgLat, avgLon], 10); // Zoomstufe ggf. anpassen
+        map.setView([avgLat, avgLon], initialZoom); // Zoomstufe ggf. anpassen
     }
     // Beim Wechsel der Auswahlbox Marina anzeigen
     marinaSelect.onchange = () => {
