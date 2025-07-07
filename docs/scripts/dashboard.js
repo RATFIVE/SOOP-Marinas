@@ -224,8 +224,8 @@ function getTimeFilter(range) {
     } else if (range === '7d') {
         from = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
     } else if (range === '1y') {
-        // 356 Tage statt 365 Tage
-        from = new Date(now.getTime() - 356 * 24 * 60 * 60 * 10000);
+        // 365 Tage statt 356 Tage
+        from = new Date(now.getTime() - 365 * 24 * 60 * 60 * 10000);
     } else {
         from = null;
     }
@@ -233,7 +233,7 @@ function getTimeFilter(range) {
 }
 
 async function fetchObservations(datastreamId, timeRange) {
-    let url = `${FROST_API}/Datastreams(${datastreamId})/Observations?$top=1000&$orderby=phenomenonTime asc`;
+    let url = `${FROST_API}/Datastreams(${datastreamId})/Observations?$top=10000&$orderby=phenomenonTime asc`;
     const from = getTimeFilter(timeRange);
     if (from) {
         url += `&$filter=phenomenonTime ge ${from}`;
