@@ -233,6 +233,9 @@ function getTimeFilter(range) {
 }
 
 async function fetchObservations(datastreamId, timeRange) {
+    const spinner = document.getElementById('loadingSpinner');
+    if (spinner) spinner.style.display = 'block'; // Show spinner
+
     let from = getTimeFilter(timeRange);
     let url = `${FROST_API}/Datastreams(${datastreamId})/Observations?$orderby=phenomenonTime asc`;
     if (from) {
@@ -240,12 +243,19 @@ async function fetchObservations(datastreamId, timeRange) {
     }
 
     let allData = [];
-    while (url) {
-        const resp = await fetch(url);
-        const data = await resp.json();
-        allData = allData.concat(data.value);
-        url = data['@iot.nextLink'] || null;
+    try {
+        while (url) {
+            const resp = await fetch(url);
+            const data = await resp.json();
+            allData = allData.concat(data.value);
+            url = data['@iot.nextLink'] || null;
+        }
+    } catch (error) {
+        console.error('Fehler beim Abrufen der Daten:', error);
+    } finally {
+        if (spinner) spinner.style.display = 'none'; // Hide spinner
     }
+
     return allData;
 }
 
