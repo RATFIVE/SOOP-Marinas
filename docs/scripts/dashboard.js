@@ -233,15 +233,24 @@ function getTimeFilter(range) {
 }
 
 async function fetchObservations(datastreamId, timeRange) {
-    let url = `${FROST_API}/Datastreams(${datastreamId})/Observations?$top=10000&$orderby=phenomenonTime asc`;
-    const from = getTimeFilter(timeRange);
+    let from = getTimeFilter(timeRange);
+    let url = `${FROST_API}/Datastreams(${datastreamId})/Observations?$orderby=phenomenonTime asc`;
     if (from) {
         url += `&$filter=phenomenonTime ge ${from}`;
     }
-    const resp = await fetch(url);
-    const data = await resp.json();
-    return data.value;
+
+    let allData = [];
+    while (url) {
+        const resp = await fetch(url);
+        const data = await resp.json();
+        allData = allData.concat(data.value);
+        url = data['@iot.nextLink'] || null;
+    }
+    return allData;
 }
+
+
+
 
 function ensureTimeseriesCanvas() {
     let canvas = document.getElementById('timeseriesChart');
