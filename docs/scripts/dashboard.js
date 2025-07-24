@@ -314,28 +314,31 @@ function renderChart(observations = [], title = 'Messwert') {
   const config = {
     type: 'line',
     data: {
-      datasets: [{
-        label: title,
-        data: dataPoints,
-        borderColor: '#78D278',
-        backgroundColor: 'rgba(120,210,120,0.15)',
-        fill: true,
-        pointRadius: 0 // Remove points from the line chart
-      }]
+        datasets: [{
+            label: title,
+            data: dataPoints,
+            borderColor: '#78D278',
+            backgroundColor: 'rgba(120,210,120,0.15)',
+            fill: true,
+            pointRadius: 0 // Remove points from the line chart
+        }]
     },
     options: {
       responsive: true,
       plugins: {
-        title: { display: true, text: title }
+        title: { display: true, text: title, font: { size: 16 } },
+        legend: { labels: { font: { size: 16 } } } // Schriftgröße für die Legende
       },
       scales: {
         x: {
           type: 'time',
           time: { unit: 'day' },
-          title: { display: true, text: 'Datum' }
+          title: { display: true, text: 'Datum', font: { size: 16 } },
+          ticks: { font: { size: 16 } } // Schriftgröße für die X-Achsen-Beschriftungen
         },
         y: {
-          title: { display: true, text: '°C' }
+          title: { display: true, text: '°C', font: { size: 16 } },
+          ticks: { font: { size: 16 } } // Schriftgröße für die Y-Achsen-Beschriftungen
         }
       }
     }
@@ -349,7 +352,7 @@ function renderChart(observations = [], title = 'Messwert') {
 
 
 // Neue Funktion für Multi-Liniendiagramm
-function renderChartMulti(datasets, title = 'Messwerte') {
+const renderChartMulti = (datasets, title = 'Messwerte') => {
     const canvas = ensureTimeseriesCanvas();
     if (!canvas) {
         console.error('Canvas für Chart nicht gefunden!');
@@ -405,19 +408,48 @@ function renderChartMulti(datasets, title = 'Messwerte') {
             plugins: {
                 title: {
                     display: true,
-                    text: title
+                    text: title,
+                    font: {
+                        size: 16 // Schriftgröße für den Titel
+                    }
+                },
+                legend: {
+                    labels: {
+                        font: {
+                            size: 16 // Schriftgröße für die Legende
+                        }
+                    }
                 }
             },
             scales: {
-                x: { type: 'time', time: { unit: 'day' }, title: { display: true, text: 'Zeit' } },
+                x: {
+                    type: 'time',
+                    time: { unit: 'day' },
+                    title: {
+                        display: true,
+                        text: 'Zeit',
+                        font: {
+                            size: 16 // Schriftgröße für die X-Achse
+                        }
+                    },
+                    ticks: {
+                        font: {
+                            size: 16 // Schriftgröße für die X-Achsen-Beschriftungen
+                        }
+                    }
+                },
                 y: {
-                    min: minY,
-                    max: maxY,
-                    title: { 
-                        display: true, 
-                        text: 'cm', 
-                        color: '#000', // Sicherstellen, dass die Farbe sichtbar ist
-                        font: { size: 14 } // Schriftgröße anpassen
+                    title: {
+                        display: true,
+                        text: 'cm',
+                        font: {
+                            size: 16 // Schriftgröße für die Y-Achse
+                        }
+                    },
+                    ticks: {
+                        font: {
+                            size: 16 // Schriftgröße für die Y-Achsen-Beschriftungen
+                        }
                     }
                 }
             }
@@ -665,16 +697,17 @@ function renderBatteryChart(observations = [], title = 'Batterie-Spannung') {
     options: {
       responsive: true,
       plugins: {
-        title: { display: true, text: title }
+        title: { display: true, text: title, font: { size: 16 } },
+        legend: { labels: { font: { size: 16 } } } // Schriftgröße für die Legende
       },
       scales: {
         x: {
           type: 'time',
           time: { unit: 'day' },
-          title: { display: true, text: 'Datum' }
+          title: { display: true, text: 'Datum', font: { size: 16 } }
         },
         y: {
-          title: { display: true, text: 'Spannung (V)' }
+          title: { display: true, text: 'Spannung (V)', font: { size: 16 } }
           // min/max setzen wir unten nur, wenn definiert
         }
       }
@@ -744,15 +777,15 @@ async function main() {
                             const dateObj = new Date(obs.phenomenonTime);
                             const dateStr = dateObj.toLocaleDateString('de-DE');
                             const timeStr = dateObj.toLocaleTimeString('de-DE', {hour: '2-digit', minute: '2-digit'});
-                            return `<div style='margin-bottom:6px;'><span style='font-weight:600;'>${displayName}:</span> <span style='color:#053246;'>${obs.result} ${unit}</span><br><span style='font-size:0.92em;color:#888;'>${dateStr} ${timeStr}</span></div>`;
+                            return `<div style='margin-bottom:6px;'><span style='font-size:1.28em;font-weight:600;'>${displayName}:</span> <span style='font-size:1.28em;color:#053246;'>${obs.result} ${unit}</span><br><span style='font-size:1.28em;color:#888;'>${dateStr} ${timeStr}</span></div>`;
                         }
                     }
                 } catch (e) {}
-                return `<div style='margin-bottom:6px;'><span style='font-weight:600;'>${displayName}:</span> <span style='color:#888;'>n/a</span></div>`;
+                return `<div style='margin-bottom:6px;'><span style='font-size:1.08em;font-weight:600;'>${displayName}:</span> <span style='color:#888;'>n/a</span></div>`;
             }));
             const popupHtml = `
                 <div style='min-width:210px;padding:4px 2px 2px 2px;'>
-                    <div style='font-size:1.08em;font-weight:700;margin-bottom:8px;color:#053246;'>${loc.anzeigeName}</div>
+                    <div style='font-size:1.58em;font-weight:700;margin-bottom:8px;color:#053246;'>${loc.anzeigeName}</div>
                     ${lastValues.join('')}
                 </div>
             `;
@@ -834,88 +867,99 @@ marinaSelect.addEventListener('change', (event) => {
         console.log(`Marina ausgewählt: ${selectedMarina}`);
     }
 });
-
 // --- Ursprüngliche showMarinaData wiederherstellen ---
 async function showMarinaData(marinaId) {
     const loc = locationsCache.find(l => l.id == marinaId);
     if (!loc) return;
+
     // Zeige die Tabelle der letzten Messwerte
     renderLastValuesTable(loc);
+
     // Lade alle Datastreams für das Thing
     const datastreams = await fetchDatastreamsAll(loc.id);
+
     let filteredDatastreams = datastreams.filter(ds => {
         const n = ds.name.toLowerCase();
         if (n.startsWith('latitude') || n.startsWith('longitude')) return false;
-        // Battery Voltage nur für Admin
+
         const dsShortName = ds.name.split('*')[0].trim();
         if (isBatteryVoltage(dsShortName) && !isAdmin) return false;
-        // Standardabweichung nur für Admin
         if (dsShortName.toLowerCase() === 'standard_deviation' && !isAdmin) return false;
+
         return true;
     });
+
     if (!isAdmin) {
         filteredDatastreams = filteredDatastreams.filter(ds => !ds.name.toLowerCase().startsWith('battery_voltage'));
     }
+
     if (!filteredDatastreams.length) {
         dataTitle.textContent = loc.name + ' (Keine Messdaten)';
         datastreamSelect.innerHTML = '';
         renderChart([], `${loc.name} (Keine Messdaten)`);
-        // Leere das zweite Diagramm
         if (window.tsChart2) window.tsChart2.destroy();
         dataSection.scrollIntoView({behavior: 'smooth'});
         return;
     }
+
     datastreamSelect.innerHTML = '';
     datastreamSelect.multiple = true;
     datastreamSelect.size = Math.min(filteredDatastreams.length, 8);
+
     const datastreamLabel = document.querySelector('label[for="datastreamSelect"]');
     if (datastreamLabel) datastreamLabel.style.display = 'none';
+
     filteredDatastreams.forEach(ds => {
         const opt = document.createElement('option');
         opt.value = ds['@iot.id'];
         opt.textContent = ds.name;
         datastreamSelect.appendChild(opt);
     });
+
     datastreamSelect.style.display = 'none';
     dataTitle.textContent = loc.anzeigeName;
+
     for (let i = 0; i < datastreamSelect.options.length; i++) {
         datastreamSelect.options[i].selected = true;
     }
+
     async function updateCharts() {
-        // IDs der gewünschten Datastreams suchen
         const dsTempWater = filteredDatastreams.find(ds => ds.name.toLowerCase().includes('temperature_water'));
         const dsTide = filteredDatastreams.find(ds => ds.name.toLowerCase().includes('tide_measurement'));
-        // Standardabweichung nur für Admin sichtbar
         const dsStd = isAdmin ? filteredDatastreams.find(ds => ds.name.toLowerCase().includes('standard_deviation')) : null;
         const dsWave = filteredDatastreams.find(ds => ds.name.toLowerCase().includes('wave_height'));
+
         // 1. Diagramm: Wassertemperatur
         let obsTemp = [];
         if (dsTempWater) {
             obsTemp = await fetchObservations(dsTempWater['@iot.id'], timeRangeSelect.value);
         }
-        // Wenn keine Daten vorhanden, prüfe auf alternative Namen wie 'wtemp'
+
         if ((!obsTemp || obsTemp.length === 0) && filteredDatastreams.length > 0) {
             const dsWTemp = filteredDatastreams.find(ds => ds.name.toLowerCase().includes('wtemp'));
             if (dsWTemp) {
                 obsTemp = await fetchObservations(dsWTemp['@iot.id'], timeRangeSelect.value);
             }
         }
+
         if (obsTemp && obsTemp.length > 0) {
             renderChart(obsTemp, getDisplayName('temperature_water'));
         } else {
             renderChart([], 'Wassertemperatur (keine Daten)');
         }
-        // Prüfe, ob mindestens einer der anderen Parameter vorhanden ist
+
+        // Zweites Diagramm: Tide, Standardabweichung, Wellenhöhe
         const hasOther = dsTide || dsStd || dsWave;
         const isReventlou = loc.name === 'Badesteg Reventlou' || loc.anzeigeName === 'Badesteg Reventlou';
         const chartContainer2 = document.getElementById('chartContainer2');
+
         if (isReventlou || !hasOther) {
-            // Zweites Diagramm ausblenden/leeren
             if (window.tsChart2) window.tsChart2.destroy();
             if (chartContainer2) chartContainer2.style.display = 'none';
         } else {
             if (chartContainer2) chartContainer2.style.display = '';
             const datasets2 = [];
+
             if (dsTide) {
                 const obsTide = await fetchObservations(dsTide['@iot.id'], timeRangeSelect.value);
                 if (obsTide && obsTide.length > 0) {
@@ -925,7 +969,7 @@ async function showMarinaData(marinaId) {
                     });
                 }
             }
-            // Standardabweichung nur für Admin
+
             if (dsStd && isAdmin) {
                 const obsStd = await fetchObservations(dsStd['@iot.id'], timeRangeSelect.value);
                 if (obsStd && obsStd.length > 0) {
@@ -935,6 +979,7 @@ async function showMarinaData(marinaId) {
                     });
                 }
             }
+
             if (dsWave) {
                 const obsWave = await fetchObservations(dsWave['@iot.id'], timeRangeSelect.value);
                 if (obsWave && obsWave.length > 0) {
@@ -944,16 +989,18 @@ async function showMarinaData(marinaId) {
                     });
                 }
             }
+
             const canvas2 = document.getElementById('timeseriesChart2');
             if (window.tsChart2) window.tsChart2.destroy();
+
             if (canvas2 && datasets2.length > 0) {
-                // Farben für die Linien
                 const colorPalette = ['#78D278', '#FF6666', '#053246'];
                 let allLabels = [];
                 datasets2.forEach(ds => {
                     allLabels = allLabels.concat(ds.data.map(d => d.x));
                 });
                 allLabels = Array.from(new Set(allLabels)).sort();
+
                 const chartData2 = {
                     labels: allLabels,
                     datasets: datasets2.map((ds, i) => ({
@@ -968,6 +1015,7 @@ async function showMarinaData(marinaId) {
                         })
                     }))
                 };
+
                 window.tsChart2 = new Chart(canvas2.getContext('2d'), {
                     type: 'line',
                     data: chartData2,
@@ -976,12 +1024,34 @@ async function showMarinaData(marinaId) {
                         plugins: {
                             title: {
                                 display: true,
-                                text: 'Wasserstand, Standardabweichung, Wellenhöhe'
-                            }
+                                text: 'Wasserstand, Standardabweichung, Wellenhöhe',
+                                font: { size: 16 }
+                            },
+                            legend: { labels: { font: { size: 16 } } }
                         },
                         scales: {
-                            x: { type: 'time', time: { unit: 'day' }, title: { display: true, text: 'Zeit' } },
-                            y: { title: { display: true, text: 'cm' } }
+                            x: {
+                                type: 'time',
+                                time: { unit: 'day' },
+                                title: {
+                                    display: true,
+                                    text: 'Zeit',
+                                    font: { size: 16 }
+                                },
+                                ticks: {
+                                    font: { size: 16 }
+                                }
+                            },
+                            y: {
+                                title: {
+                                    display: true,
+                                    text: 'cm',
+                                    font: { size: 16 }
+                                },
+                                ticks: {
+                                    font: { size: 16 }
+                                }
+                            }
                         }
                     }
                 });
@@ -991,6 +1061,7 @@ async function showMarinaData(marinaId) {
             }
         }
     }
+
     updateCharts();
     timeRangeSelect.onchange = updateCharts;
     dataSection.scrollIntoView({behavior: 'smooth'});
