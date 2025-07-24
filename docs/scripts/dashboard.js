@@ -327,13 +327,13 @@ function renderChart(observations = [], title = 'Messwert') {
       responsive: true,
       plugins: {
         title: { display: true, text: title, font: { size: 16 } },
-        legend: { labels: { font: { size: 16 } } } // Schriftgröße für die Legende
+        legend: { display: false } // Legende deaktiviert für Wassertemperatur
       },
       scales: {
         x: {
           type: 'time',
           time: { unit: 'day' },
-          title: { display: true, text: 'Datum', font: { size: 16 } },
+          title: { display: true, text: 'Zeit', font: { size: 16 } },
           ticks: { font: { size: 16 } } // Schriftgröße für die X-Achsen-Beschriftungen
         },
         y: {
@@ -408,12 +408,13 @@ const renderChartMulti = (datasets, title = 'Messwerte') => {
             plugins: {
                 title: {
                     display: true,
-                    text: title,
+                    text: 'Wasserstand und Wellenhöhe', // Entferne Standardabweichung aus der Überschrift
                     font: {
                         size: 16 // Schriftgröße für den Titel
                     }
                 },
                 legend: {
+                    display: true, // Legende aktiviert für Wasserstand, Standardabweichung, Wellenhöhe
                     labels: {
                         font: {
                             size: 16 // Schriftgröße für die Legende
@@ -455,7 +456,7 @@ const renderChartMulti = (datasets, title = 'Messwerte') => {
             }
         }
     });
-}
+};
 
 // Login-Logik für Admin
 const loginForm = document.getElementById('loginForm');
@@ -607,8 +608,8 @@ async function renderLastValuesTable(loc) {
 const DISPLAY_NAME_MAP = {
     'battery_voltage': { label: 'Batterie-Spannung', unit: 'V' },
     'temperature': { label: 'Temperatur', unit: '°C' },
-    'temperature_water': { label: 'Wassertemperatur', unit: '°C' },
-    'wtemp': { label: 'Wassertemperatur', unit: '°C' },
+    'temperature_water': { label: 'Wassertemperatur (ca. 30 cm unter der Wasseroberfläche)', unit: '°C' },
+    'wtemp': { label: 'Wassertemperatur (ca. 30 cm unter der Wasseroberfläche)', unit: '°C' },
     'tide_measurement': { label: 'Wasserstand (Abweichung vom mittleren Wasserstand)', unit: 'cm' },
     'water_level': { label: 'Wasserstand', unit: 'cm' },
     'standard_deviation': { label: 'Standardabweichung Wasserstand', unit: 'cm' },
@@ -1024,7 +1025,7 @@ async function showMarinaData(marinaId) {
                         plugins: {
                             title: {
                                 display: true,
-                                text: 'Wasserstand, Standardabweichung, Wellenhöhe',
+                                text: 'Wasserstand und Wellenhöhe',
                                 font: { size: 16 }
                             },
                             legend: { labels: { font: { size: 16 } } }
