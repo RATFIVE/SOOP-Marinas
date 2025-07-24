@@ -456,11 +456,18 @@ if (loginForm) {
 }
 
 // Bereich unter der Karte initial leeren
-window.addEventListener('DOMContentLoaded', () => {
+window.addEventListener('DOMContentLoaded', async () => {
     if (dataTitle) dataTitle.textContent = '';
     if (chartContainer) chartContainer.innerHTML = '';
     // Starte main explizit nach DOM-Load
-    main();
+    await main();
+
+    // Lade Daten für 'Im Jaich, Stadthafen Flensburg'
+    const flensburgMarina = locationsCache.find(loc => loc.anzeigeName === 'Im Jaich, Stadthafen Flensburg');
+    if (flensburgMarina) {
+        marinaSelect.value = flensburgMarina.id;
+        showMarinaData(flensburgMarina.id);
+    }
 });
 
 // Marinas für Auswahlbox
@@ -688,7 +695,12 @@ async function main() {
     locationsCache = locations;
     // Auswahlbox befüllen
     marinaSelect.innerHTML = '';
-    locations.forEach(loc => {
+    const sortedLocations = locations.sort((a, b) => {
+        if (a.anzeigeName === 'Im Jaich, Stadthafen Flensburg') return -1;
+        if (b.anzeigeName === 'Im Jaich, Stadthafen Flensburg') return 1;
+        return 0;
+    });
+    sortedLocations.forEach(loc => {
         const opt = document.createElement('option');
         opt.value = loc.id;
         opt.textContent = loc.anzeigeName;
