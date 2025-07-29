@@ -388,19 +388,25 @@ const renderChartMulti = (datasets, title = 'Messwerte') => {
 
     const chartData = {
         labels: allLabels,
-        datasets: datasets.map((ds, i) => ({
-            ...ds,
-            label: shortLabel(ds.label),
-            borderColor: colorPalette[i % colorPalette.length],
-            backgroundColor: colorPalette[i % colorPalette.length] + '33',
-            data: allLabels.map(label => {
-                const found = ds.data.find(d => d.x === label);
-                return found ? found.y : null;
+        datasets: datasets
+            .filter(ds => {
+                const dsShortName = ds.label.split('*')[0].trim().toLowerCase();
+                if (dsShortName === 'wave_height' && !isAdmin) return false; // Wellenhöhe nur für Admin
+                return true;
             })
-        }))
+            .map((ds, i) => ({
+                ...ds,
+                label: shortLabel(ds.label),
+                borderColor: colorPalette[i % colorPalette.length],
+                backgroundColor: colorPalette[i % colorPalette.length] + '33',
+                data: allLabels.map(label => {
+                    const found = ds.data.find(d => d.x === label);
+                    return found ? found.y : null;
+                })
+            }))
     };
 
-    window.tsChart = new Chart(ctx, {
+    const chartConfig = {
         type: 'line',
         data: chartData,
         options: {
@@ -408,16 +414,16 @@ const renderChartMulti = (datasets, title = 'Messwerte') => {
             plugins: {
                 title: {
                     display: true,
-                    text: 'Wasserstand und Wellenhöhe', // Entferne Standardabweichung aus der Überschrift
+                    text: 'Wasserstand und Wellenhöhe',
                     font: {
-                        size: 16 // Schriftgröße für den Titel
+                        size: 16
                     }
                 },
                 legend: {
-                    display: true, // Legende aktiviert für Wasserstand, Standardabweichung, Wellenhöhe
+                    display: true,
                     labels: {
                         font: {
-                            size: 16 // Schriftgröße für die Legende
+                            size: 16
                         }
                     }
                 }
@@ -430,12 +436,12 @@ const renderChartMulti = (datasets, title = 'Messwerte') => {
                         display: true,
                         text: 'Zeit',
                         font: {
-                            size: 16 // Schriftgröße für die X-Achse
+                            size: 16
                         }
                     },
                     ticks: {
                         font: {
-                            size: 16 // Schriftgröße für die X-Achsen-Beschriftungen
+                            size: 16
                         }
                     }
                 },
@@ -444,18 +450,22 @@ const renderChartMulti = (datasets, title = 'Messwerte') => {
                         display: true,
                         text: 'cm',
                         font: {
-                            size: 16 // Schriftgröße für die Y-Achse
+                            size: 16
                         }
                     },
                     ticks: {
                         font: {
-                            size: 16 // Schriftgröße für die Y-Achsen-Beschriftungen
+                            size: 16
                         }
-                    }
+                    },
+                    min: minY,
+                    max: maxY
                 }
             }
         }
-    });
+    };
+
+    window.tsChart = new Chart(ctx, chartConfig);
 };
 
 // Login-Logik für Admin
@@ -549,6 +559,8 @@ async function renderLastValuesTable(loc) {
         if (isBatteryVoltage(dsShortName) && !isAdmin) return false;
         // Standardabweichung nur für Admin
         if (dsShortName.toLowerCase() === 'standard_deviation' && !isAdmin) return false;
+        // Wellenhöhe nur für Admin
+        if (dsShortName.toLowerCase() === 'wave_height' && !isAdmin) return false;
         return true;
     });
     if (!filteredDatastreams.length) return;
@@ -711,9 +723,9 @@ function renderBatteryChart(observations = [], title = 'Batterie-Spannung') {
           title: { display: true, text: 'Spannung (V)', font: { size: 16 } }
           // min/max setzen wir unten nur, wenn definiert
         }
-      }
-    }
-  };
+        }
+    }   
+    };
 
   // min/max nur hinzufügen, wenn berechnet
   if (minY != null) chartConfig.options.scales.y.min = minY;
@@ -763,6 +775,8 @@ async function main() {
                 if (isBatteryVoltage(dsShortName) && !isAdmin) return false;
                 // Standardabweichung nur für Admin
                 if (dsShortName.toLowerCase() === 'standard_deviation' && !isAdmin) return false;
+                // Wellenhöhe nur für Admin
+                if (dsShortName.toLowerCase() === 'wave_height' && !isAdmin) return false;
                 return true;
             });
             const lastValues = await Promise.all(filteredDatastreams.map(async ds => {
@@ -927,29 +941,13 @@ async function showMarinaData(marinaId) {
     async function updateCharts() {
         const dsTempWater = filteredDatastreams.find(ds => ds.name.toLowerCase().includes('temperature_water'));
         const dsTide = filteredDatastreams.find(ds => ds.name.toLowerCase().includes('tide_measurement'));
-        const dsStd = isAdmin ? filteredDatastreams.find(ds => ds.name.toLowerCase().includes('standard_deviation')) : null;
-        const dsWave = filteredDatastreams.find(ds => ds.name.toLowerCase().includes('wave_height'));
+        const dsStd = isAdmin ? filteredDatastreams.find(ds => ds.name.toLowerCase().includes('standard_deviation')) : null; // Standardabweichung nur für Admin
+        const dsWave = isAdmin ? filteredDatastreams.find(ds => ds.name.toLowerCase().includes('wave_height')) : null; // Wellenhöhe nur für Admin
 
-        // 1. Diagramm: Wassertemperatur
-        let obsTemp = [];
-        if (dsTempWater) {
-            obsTemp = await fetchObservations(dsTempWater['@iot.id'], timeRangeSelect.value);
-        }
+        // Erstes Element: Tabelle der letzten Messwerte
+        renderLastValuesTable(loc);
 
-        if ((!obsTemp || obsTemp.length === 0) && filteredDatastreams.length > 0) {
-            const dsWTemp = filteredDatastreams.find(ds => ds.name.toLowerCase().includes('wtemp'));
-            if (dsWTemp) {
-                obsTemp = await fetchObservations(dsWTemp['@iot.id'], timeRangeSelect.value);
-            }
-        }
-
-        if (obsTemp && obsTemp.length > 0) {
-            renderChart(obsTemp, getDisplayName('temperature_water'));
-        } else {
-            renderChart([], 'Wassertemperatur (keine Daten)');
-        }
-
-        // Zweites Diagramm: Tide, Standardabweichung, Wellenhöhe
+        // Zweites Diagramm: Wasserstand und Wellenhöhe
         const hasOther = dsTide || dsStd || dsWave;
         const isReventlou = loc.name === 'Badesteg Reventlou' || loc.anzeigeName === 'Badesteg Reventlou';
         const chartContainer2 = document.getElementById('chartContainer2');
@@ -1008,7 +1006,7 @@ async function showMarinaData(marinaId) {
                         ...ds,
                         borderColor: colorPalette[i % colorPalette.length],
                         backgroundColor: colorPalette[i % colorPalette.length] + '33',
-                        fill: false,
+                        fill: true,
                         pointRadius: 0,
                         data: allLabels.map(label => {
                             const found = ds.data.find(d => d.x === label);
@@ -1054,13 +1052,33 @@ async function showMarinaData(marinaId) {
                                 }
                             }
                         }
-                    }
-                });
+                    }});
             } else if (canvas2) {
                 const ctx2 = canvas2.getContext('2d');
                 ctx2.clearRect(0, 0, canvas2.width, canvas2.height);
             }
         }
+
+        // Drittes Diagramm: Wassertemperatur
+        let obsTemp = [];
+        if (dsTempWater) {
+            obsTemp = await fetchObservations(dsTempWater['@iot.id'], timeRangeSelect.value);
+        }
+
+        if ((!obsTemp || obsTemp.length === 0) && filteredDatastreams.length > 0) {
+            const dsWTemp = filteredDatastreams.find(ds => ds.name.toLowerCase().includes('wtemp'));
+            if (dsWTemp) {
+                obsTemp = await fetchObservations(dsWTemp['@iot.id'], timeRangeSelect.value);
+            }
+        }
+
+        if (obsTemp && obsTemp.length > 0) {
+            renderChart(obsTemp, getDisplayName('temperature_water'));
+        } else {
+            renderChart([], 'Wassertemperatur (keine Daten)');
+        }
+
+        dataSection.scrollIntoView({behavior: 'smooth'});
     }
 
     updateCharts();
