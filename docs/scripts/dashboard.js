@@ -584,9 +584,15 @@ async function renderLastValuesTable(loc) {
                     const dateObj = new Date(obs.phenomenonTime);
                     const dateStr = dateObj.toLocaleDateString('de-DE');
                     const timeStr = dateObj.toLocaleTimeString('de-DE', {hour: '2-digit', minute: '2-digit'});
+                    let value = obs.result;
+                    if (dsShortName.toLowerCase() === 'tide_measurement' && typeof value === 'number') {
+                        value = value > 0 ? `+${value} ${unit}` : `${value} ${unit}`;
+                    } else {
+                        value = `${value} ${unit}`;
+                    }
                     return {
                         name: displayName,
-                        value: obs.result,
+                        value: value,
                         unit: unit,
                         date: dateStr,
                         time: timeStr
@@ -610,7 +616,7 @@ async function renderLastValuesTable(loc) {
     lastValues.forEach(row => {
         html += `<tr style='border-bottom:1px solid #e0e0e0;'>`;
         html += `<td style='padding:6px 8px;'>${row.name}</td>`;
-        html += `<td style='padding:6px 8px;text-align:right;color:#053246;font-weight:600;'>${row.value !== 'n/a' ? row.value + ' ' + row.unit : 'n/a'}</td>`;
+        html += `<td style='padding:6px 8px;text-align:right;color:#053246;font-weight:600;'>${row.value !== 'n/a' ? row.value : 'n/a'}</td>`;
         html += `<td style='padding:6px 8px;text-align:center;color:#888;'>${row.date}</td>`;
         html += `<td style='padding:6px 8px;text-align:center;color:#888;'>${row.time}</td>`;
         html += `</tr>`;
