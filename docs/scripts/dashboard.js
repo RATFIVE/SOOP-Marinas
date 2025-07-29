@@ -571,17 +571,14 @@ async function renderLastValuesTable(loc) {
     let filteredDatastreams = datastreams.filter(ds => {
         const n = ds.name.toLowerCase();
         if (n.startsWith('latitude') || n.startsWith('longitude')) return false;
-        // Battery Voltage nur für Admin
         const dsShortName = ds.name.split('*')[0].trim();
         if (isBatteryVoltage(dsShortName) && !isAdmin) return false;
-        // Standardabweichung nur für Admin
         if (dsShortName.toLowerCase() === 'standard_deviation' && !isAdmin) return false;
-        // Wellenhöhe nur für Admin
         if (dsShortName.toLowerCase() === 'wave_height' && !isAdmin) return false;
         return true;
     });
     if (!filteredDatastreams.length) return;
-    // Hole für jeden Datastream die letzte Observation
+
     const lastValues = await Promise.all(filteredDatastreams.map(async ds => {
         const dsShortName = ds.name.split('*')[0].trim();
         const displayName = getDisplayName(dsShortName);
@@ -619,12 +616,23 @@ async function renderLastValuesTable(loc) {
             time: '-'
         };
     }));
-    // Baue die Tabelle
+
+    // Sortiere Wasserstand und Wassertemperatur zuerst
+    const priority = ['Wasserstand', 'Wassertemperatur'];
+    const sortedValues = lastValues.sort((a, b) => {
+        const indexA = priority.findIndex(p => a.name.startsWith(p));
+        const indexB = priority.findIndex(p => b.name.startsWith(p));
+        if (indexA === -1 && indexB === -1) return 0;
+        if (indexA === -1) return 1;
+        if (indexB === -1) return -1;
+        return indexA - indexB;
+    });
+
     let html = `<div style='font-size:1.08em;font-weight:700;margin-bottom:10px;color:#053246;'>Letzte Messwerte</div>`;
     html += `<table style='width:100%;border-collapse:collapse;'>`;
     html += `<thead><tr style='background:#f5f5f5;'><th style='text-align:left;padding:6px 8px;'>Messgröße</th><th style='text-align:right;padding:6px 8px;'>Wert</th><th style='text-align:center;padding:6px 8px;'>Datum</th><th style='text-align:center;padding:6px 8px;'>Uhrzeit</th></tr></thead>`;
     html += `<tbody>`;
-    lastValues.forEach(row => {
+    sortedValues.forEach(row => {
         html += `<tr style='border-bottom:1px solid #e0e0e0;'>`;
         html += `<td style='padding:6px 8px;'>${row.name}</td>`;
         html += `<td style='padding:6px 8px;text-align:right;color:#053246;font-weight:600;'>${row.value !== 'n/a' ? row.value : 'n/a'}</td>`;
@@ -821,19 +829,33 @@ async function main() {
                         const obsData = await obsResp.json();
                         if (obsData.value.length > 0) {
                             const obs = obsData.value[0];
-                            const dateObj = new Date(obs.phenomenonTime);
-                            const dateStr = dateObj.toLocaleDateString('de-DE');
-                            const timeStr = dateObj.toLocaleTimeString('de-DE', {hour: '2-digit', minute: '2-digit'});
-                            return `<div style='margin-bottom:6px;'><span style='font-size:1.28em;font-weight:600;'>${displayName}:</span> <span style='font-size:1.28em;color:#053246;'>${obs.result} ${unit}</span><br><span style='font-size:1.28em;color:#888;'>${dateStr} ${timeStr}</span></div>`;
+                            let value = obs.result;
+                            if (dsShortName.toLowerCase() === 'tide_measurement' && typeof value === 'number') {
+                                value = value > 0 ? `+${value} ${unit}` : `${value} ${unit}`;
+                            } else {
+                                value = `${value} ${unit}`;
+                            }
+                            return `<div style='margin-bottom:6px;'><span style='font-size:1.08em;font-weight:600;'>${displayName}:</span> <span style='font-size:1.08em;font-weight:600;color:#053246;'>${value}</span></div>`;
                         }
                     }
                 } catch (e) {}
                 return `<div style='margin-bottom:6px;'><span style='font-size:1.08em;font-weight:600;'>${displayName}:</span> <span style='color:#888;'>n/a</span></div>`;
             }));
+
+            const priority = ['Wasserstand (Abweichung vom mittleren Wasserstand)', 'Wassertemperatur (ca. 30 cm unter der Wasseroberfläche)'];
+            const sortedValues = lastValues.sort((a, b) => {
+                const indexA = priority.findIndex(p => a.includes(p));
+                const indexB = priority.findIndex(p => b.includes(p));
+                if (indexA === -1 && indexB === -1) return 0;
+                if (indexA === -1) return 1;
+                if (indexB === -1) return -1;
+                return indexA - indexB;
+            });
+
             const popupHtml = `
                 <div style='min-width:210px;padding:4px 2px 2px 2px;'>
                     <div style='font-size:1.58em;font-weight:700;margin-bottom:8px;color:#053246;'>${loc.anzeigeName}</div>
-                    ${lastValues.join('')}
+                    ${sortedValues.join('')}
                 </div>
             `;
             marker.bindPopup(popupHtml, {autoPan: true, closeButton: false, className: 'soop-popup'}).openPopup();
