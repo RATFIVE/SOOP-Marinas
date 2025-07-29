@@ -414,7 +414,7 @@ const renderChartMulti = (datasets, title = 'Messwerte') => {
             plugins: {
                 title: {
                     display: true,
-                    text: 'Wasserstand und Wellenhöhe',
+                    text: 'Wasserstand',
                     font: {
                         size: 16
                     }
@@ -527,7 +527,7 @@ const marinaOptions = [
 const marinaSelect = document.getElementById('marinaSelect');
 let locationsCache = [];
 
-// Bereich für die letzten Messwerte unterhalb der Karte, aber oberhalb des Diagramms
+// Bereich für die letzten Messwerte unterhalb der Karte, aber oberhalb des Diagramms (jetzt vor chartContainer2)
 const lastValuesTableContainer = document.createElement('div');
 lastValuesTableContainer.id = 'lastValuesTableContainer';
 lastValuesTableContainer.style.maxWidth = '900px';
@@ -538,11 +538,17 @@ lastValuesTableContainer.style.boxShadow = '0 2px 8px rgba(5,50,70,0.08)';
 lastValuesTableContainer.style.padding = '18px 18px 12px 18px';
 lastValuesTableContainer.style.display = 'none';
 
-// Füge den Container in den dataContent-Bereich ein (vor dem Chart)
 const dataContent = document.getElementById('dataContent');
 if (dataContent) {
-    const chartContainer = document.getElementById('chartContainer');
-    dataContent.insertBefore(lastValuesTableContainer, chartContainer);
+    // Versuche, chartContainer2 zu finden
+    const chart2 = document.getElementById('chartContainer2');
+    if (chart2) {
+        dataContent.insertBefore(lastValuesTableContainer, chart2);
+    } else {
+        // Fallback: wenn chartContainer2 noch nicht existiert, wie bisher vor chartContainer
+        const chart1 = document.getElementById('chartContainer');
+        dataContent.insertBefore(lastValuesTableContainer, chart1);
+    }
 }
 
 // Hilfsfunktion: Tabelle der letzten Messwerte rendern
@@ -1023,7 +1029,7 @@ async function showMarinaData(marinaId) {
                         plugins: {
                             title: {
                                 display: true,
-                                text: 'Wasserstand und Wellenhöhe',
+                                text: 'Wasserstand',
                                 font: { size: 16 }
                             },
                             legend: { labels: { font: { size: 16 } } }
