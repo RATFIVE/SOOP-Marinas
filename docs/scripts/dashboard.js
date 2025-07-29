@@ -276,6 +276,11 @@ function ensureTimeseriesCanvas() {
     return canvas;
 }
 
+// Füge den Datums-Adapter für Chart.js hinzu
+const dateFnsAdapterScript = document.createElement('script');
+dateFnsAdapterScript.src = 'https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns';
+document.head.appendChild(dateFnsAdapterScript);
+
 function renderChart(observations = [], title = 'Messwert') {
   const canvas = ensureTimeseriesCanvas();
   if (!canvas) {
@@ -332,9 +337,17 @@ function renderChart(observations = [], title = 'Messwert') {
       scales: {
         x: {
           type: 'time',
-          time: { unit: 'day' },
-          title: { display: true, text: 'Zeit', font: { size: 16 } },
-          ticks: { font: { size: 16 } } // Schriftgröße für die X-Achsen-Beschriftungen
+          time: {
+            unit: 'hour',
+            displayFormats: { hour: 'dd.MM.yyyy HH:mm' },
+            tooltipFormat: 'dd.MM.yyyy HH:mm'
+          },
+          ticks: {
+            font: { size: 16 },
+            autoSkip: true,
+            maxTicksLimit: 15,
+            autoSkipPadding: 10
+          }
         },
         y: {
           title: { display: true, text: '°C', font: { size: 16 } },
@@ -431,18 +444,16 @@ const renderChartMulti = (datasets, title = 'Messwerte') => {
             scales: {
                 x: {
                     type: 'time',
-                    time: { unit: 'day' },
-                    title: {
-                        display: true,
-                        text: 'Zeit',
-                        font: {
-                            size: 16
-                        }
+                    time: {
+                        unit: 'hour',
+                        displayFormats: { hour: 'dd.MM.yyyy HH:mm' },
+                        tooltipFormat: 'dd.MM.yyyy HH:mm'
                     },
                     ticks: {
-                        font: {
-                            size: 16
-                        }
+                        font: { size: 16 },
+                        autoSkip: true,
+                        maxTicksLimit: 15,
+                        autoSkipPadding: 10
                     }
                 },
                 y: {
@@ -728,14 +739,23 @@ function renderBatteryChart(observations = [], title = 'Batterie-Spannung') {
       scales: {
         x: {
           type: 'time',
-          time: { unit: 'day' },
-          title: { display: true, text: 'Datum', font: { size: 16 } }
+          time: {
+            unit: 'hour',
+            displayFormats: { hour: 'dd.MM.yyyy HH:mm' },
+            tooltipFormat: 'dd.MM.yyyy HH:mm'
+          },
+          ticks: {
+            font: { size: 16 },
+            autoSkip: true,
+            maxTicksLimit: 15,
+            autoSkipPadding: 10
+          }
         },
         y: {
-          title: { display: true, text: 'Spannung (V)', font: { size: 16 } }
-          // min/max setzen wir unten nur, wenn definiert
+          title: { display: true, text: 'Spannung (V)', font: { size: 16 } },
+          ticks: { font: { size: 16 } }
         }
-        }
+      }
     }   
     };
 
@@ -1043,14 +1063,21 @@ async function showMarinaData(marinaId) {
                         scales: {
                             x: {
                                 type: 'time',
-                                time: { unit: 'day' },
+                                time: {
+                                    unit: 'hour',
+                                    displayFormats: { hour: 'dd.MM.yyyy HH:mm' },
+                                    tooltipFormat: 'dd.MM.yyyy HH:mm'
+                                },
                                 title: {
-                                    display: true,
+                                    display: false,
                                     text: 'Zeit',
                                     font: { size: 16 }
                                 },
                                 ticks: {
-                                    font: { size: 16 }
+                                    font: { size: 16 },
+                                    autoSkip: true,
+                                    maxTicksLimit: 15,
+                                    autoSkipPadding: 10
                                 }
                             },
                             y: {
