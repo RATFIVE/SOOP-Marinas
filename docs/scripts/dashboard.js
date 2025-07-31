@@ -122,7 +122,8 @@ async function fetchLocations() {
             'box_gmr_twl-box_0924005',
             'box_gmr_twl-box_0924002',
             'Badesteg Reventlou',
-            'box_gmr_twl-box_0924004'
+            'box_gmr_twl-box_0924004',
+            'box_gmr_twl-box_0924006'
         ];
         if (isAdmin) erlaubteThings.push('box_gmr_twl-box_0924004');
         let filteredThings = data.value.filter(thing => erlaubteThings.includes(thing.name));
@@ -171,6 +172,7 @@ async function fetchLocations() {
             if (thing.name === 'box_gmr_twl-box_0924002') anzeigeName = 'Kappeln/Grauhöft, Werfthafen Stapelfeld';
             if (thing.name === 'Badesteg Reventlou') anzeigeName = 'Badesteg Reventlou';
             if (thing.name === 'box_gmr_twl-box_0924004') anzeigeName = 'Schilksee';
+            if (thing.name === 'box_gmr_twl-box_0924006') anzeigeName = 'Marina Heiligenhafen';
             return {
                 id: thing['@iot.id'],
                 name: thing.name,
@@ -867,7 +869,7 @@ async function main() {
     });
     // Graue Marker für zusätzliche Marinas hinzufügen
     const additionalMarinas = [
-        { name: 'Marina Heiligenhafen (Demnächst verfügbar)', lat: 54.3755, lon: 10.9845 },
+        //{ name: 'Marina Heiligenhafen (Demnächst verfügbar)', lat: 54.3755, lon: 10.9845 },
         { name: 'Marina Lübeck "The Newport" (Demnächst verfügbar)', lat: 53.8734, lon: 10.6834 }
     ];
 
