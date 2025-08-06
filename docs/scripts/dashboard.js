@@ -123,7 +123,8 @@ async function fetchLocations() {
             'box_gmr_twl-box_0924002',
             'Badesteg Reventlou',
             'box_gmr_twl-box_0924004',
-            'box_gmr_twl-box_0924006'
+            'box_gmr_twl-box_0924006',
+            'soop_box_t-box_0924003'
         ];
         if (isAdmin) erlaubteThings.push('box_gmr_twl-box_0924004');
         let filteredThings = data.value.filter(thing => erlaubteThings.includes(thing.name));
@@ -173,6 +174,7 @@ async function fetchLocations() {
             if (thing.name === 'Badesteg Reventlou') anzeigeName = 'Badesteg Reventlou';
             if (thing.name === 'box_gmr_twl-box_0924004') anzeigeName = 'Schilksee';
             if (thing.name === 'box_gmr_twl-box_0924006') anzeigeName = 'Marina Heiligenhafen';
+            if (thing.name === 'soop_box_t-box_0924003') anzeigeName = 'Marina Lübeck "The Newport';
             return {
                 id: thing['@iot.id'],
                 name: thing.name,
@@ -532,7 +534,9 @@ const marinaOptions = [
     { id: null, name: '---' },
     { id: null, name: 'Im Jaich, Stadthafen Flensburg' },
     { id: null, name: 'Marina Kappel' },
-    { id: null, name: 'Badesteg Reventlou' }
+    { id: null, name: 'Badesteg Reventlou' },
+    { id: null, name: 'Schilksee' },
+    { id: null, name: 'Marina Heiligenhafen' },
     // box_gmr_twl-box_0924004 wird nicht mehr statisch gelistet
 ];
 
@@ -870,7 +874,7 @@ async function main() {
     // Graue Marker für zusätzliche Marinas hinzufügen
     const additionalMarinas = [
         //{ name: 'Marina Heiligenhafen (Demnächst verfügbar)', lat: 54.3755, lon: 10.9845 },
-        { name: 'Marina Lübeck "The Newport" (Demnächst verfügbar)', lat: 53.8734, lon: 10.6834 }
+        //{ name: 'Marina Lübeck "The Newport" (Demnächst verfügbar)', lat: 53.8734, lon: 10.6834 }
     ];
 
     additionalMarinas.forEach(marina => {
