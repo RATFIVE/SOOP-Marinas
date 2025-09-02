@@ -230,6 +230,56 @@ body {
     font-weight: bold;
 }
 
+/* Footer styles */
+#site-footer {
+    background: rgba(5,50,70,0.97);
+    color: #fff;
+    padding: 14px 12px;
+    text-align: center;
+    font-size: 0.95rem;
+    box-shadow: 0 -1px 8px rgba(0,0,0,0.12);
+    position: static; /* default: part of document flow (scrolling) */
+    z-index: 500; /* lower than cookie-banner (9999) and spinner (1000) */
+}
+
+/* Sticky variant (optional): uncomment to pin footer to bottom of viewport */
+/*
+#site-footer.sticky {
+    position: sticky;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+}
+*/
+
+.footer-nav {
+    display: inline-flex;
+    gap: 12px;
+    align-items: center;
+    justify-content: center;
+}
+
+.footer-nav a {
+    color: #ffffff;
+    text-decoration: none;
+    padding: 6px 8px;
+    border-radius: 6px;
+}
+
+.footer-nav a:hover {
+    background: rgba(255,255,255,0.06);
+}
+
+.footer-nav a:focus {
+    outline: 3px solid #78D278; /* deutlich sichtbarer Fokus */
+    outline-offset: 2px;
+    background: rgba(255,255,255,0.06);
+}
+
+.footer-nav .divider {
+    color: rgba(255,255,255,0.6);
+}
+
 @media (max-width: 900px) {
     #branding-header {
         top: 0;
