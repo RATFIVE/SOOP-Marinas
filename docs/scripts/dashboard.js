@@ -174,7 +174,7 @@ async function fetchLocations() {
             if (thing.name === 'Badesteg Reventlou') anzeigeName = 'Badesteg Reventlou';
             if (thing.name === 'box_gmr_twl-box_0924004') anzeigeName = 'Schilksee';
             if (thing.name === 'box_gmr_twl-box_0924006') anzeigeName = 'Marina Heiligenhafen';
-            if (thing.name === 'soop_box_t-box_0924003') anzeigeName = 'Marina Lübeck "The Newport';
+            if (thing.name === 'soop_box_t-box_0924003') anzeigeName = 'The Newport Marina, Lübeck';
             return {
                 id: thing['@iot.id'],
                 name: thing.name,
