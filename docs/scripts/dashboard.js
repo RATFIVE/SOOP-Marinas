@@ -125,8 +125,9 @@ async function fetchLocations() {
             'box_gmr_twl-box_0924004',
             'box_gmr_twl-box_0924006',
             'soop_box_t-box_0924003',
+            'box_gmr_twl-box_0924007',
             //'box_gmr_twl-box_0924008',
-            //'box_gmr_twl-box_0924007',
+            
         ];
         if (isAdmin) erlaubteThings.push('box_gmr_twl-box_0924004');
         let filteredThings = data.value.filter(thing => erlaubteThings.includes(thing.name));
@@ -177,8 +178,8 @@ async function fetchLocations() {
             if (thing.name === 'box_gmr_twl-box_0924004') anzeigeName = 'Schilksee';
             if (thing.name === 'box_gmr_twl-box_0924006') anzeigeName = 'Marina Heiligenhafen';
             if (thing.name === 'soop_box_t-box_0924003') anzeigeName = 'The Newport Marina, Lübeck';
-            // if (thing.name === 'box_gmr_twl-box_0924007') anzeigeName = 'Venedig';
-            // if (thing.name === 'box_gmr_twl-box_0924008') anzeigeName = 'Venedig';
+            if (thing.name === 'box_gmr_twl-box_0924007') anzeigeName = 'Venedig';
+            //if (thing.name === 'box_gmr_twl-box_0924008') anzeigeName = 'Venedig';
             return {
                 id: thing['@iot.id'],
                 name: thing.name,
