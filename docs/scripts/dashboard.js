@@ -311,7 +311,7 @@ function renderChart(observations = [], title = 'Messwert') {
       return { x, y };
     })
     .filter(pt => !isNaN(pt.x) && !isNaN(pt.y))
-    .filter(pt => pt.y <= 400 && pt.y >= -300); // Filter: keine Werte über 400°C oder unter -300m
+    .filter(pt => pt.y <= 300 && pt.y >= -300); // Filter: keine Werte über 300°C oder unter -300m
 
   let minY, maxY;
   if (dataPoints.length > 0) {
