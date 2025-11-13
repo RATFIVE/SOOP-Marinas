@@ -385,7 +385,7 @@ const renderChartMulti = (datasets, title = 'Messwerte') => {
     if (window.tsChart) window.tsChart.destroy();
 
     let minY = undefined, maxY = undefined;
-    const allValues = datasets.flatMap(ds => ds.data.map(d => d.y).filter(v => typeof v === 'number' && v <= 400 && v >= -300));
+    const allValues = datasets.flatMap(ds => ds.data.map(d => d.y).filter(v => typeof v === 'number' && v <= 300 && v >= -300));
     if (allValues.length > 0) {
         const min = Math.min(...allValues);
         const max = Math.max(...allValues);
@@ -602,8 +602,8 @@ async function renderLastValuesTable(loc) {
                 const obsData = await obsResp.json();
                 if (obsData.value.length > 0) {
                     const obs = obsData.value[0];
-                    // Filter: Werte über 400°C oder unter -300m ausschließen
-                    if (typeof obs.result === 'number' && (obs.result > 400 || obs.result < -300)) {
+                    // Filter: Werte über 300°C oder unter -300m ausschließen
+                    if (typeof obs.result === 'number' && (obs.result > 300 || obs.result < -300)) {
                         return {
                             name: displayName,
                             value: 'Fehlerwert',
@@ -733,7 +733,7 @@ function renderBatteryChart(observations = [], title = 'Batterie-Spannung') {
            : parseFloat(o.result)
     }))
     .filter(pt => !isNaN(pt.x) && !isNaN(pt.y))
-    .filter(pt => pt.y <= 400 && pt.y >= -300); // Filter: keine Werte über 400°C oder unter -300m
+    .filter(pt => pt.y <= 300 && pt.y >= -300); // Filter: keine Werte über 300°C oder unter -300m
 
   // Y-Achse Min/Max mit Padding berechnen
   let minY, maxY;
@@ -853,8 +853,8 @@ async function main() {
                         const obsData = await obsResp.json();
                         if (obsData.value.length > 0) {
                             const obs = obsData.value[0];
-                            // Filter: Werte über 400°C oder unter -300m ausschließen
-                            if (typeof obs.result === 'number' && (obs.result > 400 || obs.result < -300)) {
+                            // Filter: Werte über 300°C oder unter -300m ausschließen
+                            if (typeof obs.result === 'number' && (obs.result > 300 || obs.result < -300)) {
                                 return `<div style='margin-bottom:6px;'><span style='font-size:1.08em;font-weight:600;'>${displayName}:</span> <span style='color:#888;'>Fehlerwert</span></div>`;
                             }
                             let value = obs.result;
@@ -1044,8 +1044,8 @@ async function showMarinaData(marinaId) {
             if (dsTide) {
                 const obsTide = await fetchObservations(dsTide['@iot.id'], timeRangeSelect.value);
                 if (obsTide && obsTide.length > 0) {
-                    // Filter für Tide-Daten: keine Werte über 400 oder unter -300
-                    const filteredObsTide = obsTide.filter(o => typeof o.result === 'number' && o.result <= 400 && o.result >= -300);
+                    // Filter für Tide-Daten: keine Werte über 300 oder unter -300
+                    const filteredObsTide = obsTide.filter(o => typeof o.result === 'number' && o.result <= 300 && o.result >= -300);
                     if (filteredObsTide.length > 0) {
                         datasets2.push({
                             label: getDisplayName('tide_measurement'),
@@ -1058,8 +1058,8 @@ async function showMarinaData(marinaId) {
             if (dsStd && isAdmin) {
                 const obsStd = await fetchObservations(dsStd['@iot.id'], timeRangeSelect.value);
                 if (obsStd && obsStd.length > 0) {
-                    // Filter für Standardabweichungs-Daten: keine Werte über 400 oder unter -300
-                    const filteredObsStd = obsStd.filter(o => typeof o.result === 'number' && o.result <= 400 && o.result >= -300);
+                    // Filter für Standardabweichungs-Daten: keine Werte über 300 oder unter -300
+                    const filteredObsStd = obsStd.filter(o => typeof o.result === 'number' && o.result <= 300 && o.result >= -300);
                     if (filteredObsStd.length > 0) {
                         datasets2.push({
                             label: getDisplayName('standard_deviation'),
@@ -1072,8 +1072,8 @@ async function showMarinaData(marinaId) {
             if (dsWave) {
                 const obsWave = await fetchObservations(dsWave['@iot.id'], timeRangeSelect.value);
                 if (obsWave && obsWave.length > 0) {
-                    // Filter für Wellenhöhen-Daten: keine Werte über 400 oder unter -300
-                    const filteredObsWave = obsWave.filter(o => typeof o.result === 'number' && o.result <= 400 && o.result >= -300);
+                    // Filter für Wellenhöhen-Daten: keine Werte über 300 oder unter -300
+                    const filteredObsWave = obsWave.filter(o => typeof o.result === 'number' && o.result <= 300 && o.result >= -300);
                     if (filteredObsWave.length > 0) {
                         datasets2.push({
                             label: getDisplayName('wave_height'),
@@ -1164,16 +1164,16 @@ async function showMarinaData(marinaId) {
         let obsTemp = [];
         if (dsTempWater) {
             obsTemp = await fetchObservations(dsTempWater['@iot.id'], timeRangeSelect.value);
-            // Filter für Temperatur-Daten: keine Werte über 400°C oder unter -300°C
-            obsTemp = obsTemp.filter(o => typeof o.result === 'number' && o.result <= 400 && o.result >= -300);
+            // Filter für Temperatur-Daten: keine Werte über 300°C oder unter -300°C
+            obsTemp = obsTemp.filter(o => typeof o.result === 'number' && o.result <= 300 && o.result >= -300);
         }
 
         if ((!obsTemp || obsTemp.length === 0) && filteredDatastreams.length > 0) {
             const dsWTemp = filteredDatastreams.find(ds => ds.name.toLowerCase().includes('wtemp'));
             if (dsWTemp) {
                 obsTemp = await fetchObservations(dsWTemp['@iot.id'], timeRangeSelect.value);
-                // Filter für Temperatur-Daten: keine Werte über 400°C oder unter -300°C
-                obsTemp = obsTemp.filter(o => typeof o.result === 'number' && o.result <= 400 && o.result >= -300);
+                // Filter für Temperatur-Daten: keine Werte über 300°C oder unter -300°C
+                obsTemp = obsTemp.filter(o => typeof o.result === 'number' && o.result <= 300 && o.result >= -300);
             }
         }
 
